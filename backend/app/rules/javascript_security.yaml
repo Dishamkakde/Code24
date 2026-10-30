@@ -1,0 +1,48 @@
+rules:
+  - id: javascript-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: child_process.exec($CMD, ...)
+          - pattern: exec($CMD, ...)
+    message: "Potential Command Injection: executing shell command with child_process.exec"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      confidence: HIGH
+      vulnerability_class: "Command Injection"
+      references:
+        - "https://cwe.mitre.org/data/definitions/78.html"
+      remediation: "Use child_process.execFile or child_process.spawn without a shell, passing arguments as an array."
+
+  - id: javascript-code-injection-eval
+    patterns:
+      - pattern-either:
+          - pattern: eval($CODE)
+          - pattern: new Function($CODE)
+    message: "Code Injection: unsafe evaluation of dynamic string with eval() or Function()"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-95"
+      confidence: HIGH
+      vulnerability_class: "Improper Neutralization of Directives in Dynamically Evaluated Code"
+      references:
+        - "https://cwe.mitre.org/data/definitions/95.html"
+      remediation: "Avoid dynamic evaluation of code. Use structured JSON parsing or safe domain-specific interpreters."
+
+  - id: javascript-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: fs.readFile(path.join($DIR, $INPUT), ...)
+          - pattern: fs.readFileSync(path.join($DIR, $INPUT), ...)
+    message: "Potential Path Traversal in filesystem read operation"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      confidence: MEDIUM
+      vulnerability_class: "Path Traversal"
+      references:
+        - "https://cwe.mitre.org/data/definitions/22.html"
+      remediation: "Resolve paths with path.resolve and check that the resolved path starts with the trusted root directory."

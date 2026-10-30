@@ -1,0 +1,9 @@
+{
+  "name": "deliberately-vulnerable-app",
+  "version": "1.0.0",
+  "description": "Vulnerable test fixture",
+  "main": "index.js",
+  "dependencies": {
+    "lodash": "4.17.15"
+  }
+}

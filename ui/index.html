@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PatchProof</title>
+<style>
+:root{--bg:#0e1116;--card:#161b22;--line:#2a313c;--tx:#e6edf3;--mut:#8b949e;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#58a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:28px 24px 8px;max-width:1000px;margin:auto}
+h1{margin:0;font-size:28px} h1 span{color:var(--acc)}
+p.sub{color:var(--mut);margin:4px 0 16px}
+main{max-width:1000px;margin:auto;padding:0 24px 60px}
+button{background:var(--acc);color:#04111f;border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:15px}
+button:disabled{opacity:.5;cursor:wait}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:20px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:24px}.stat span{color:var(--mut);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;border:1px solid}
+.Critical{color:var(--bad);border-color:var(--bad)}.High{color:#ff8a4c;border-color:#ff8a4c}
+.Medium{color:var(--warn);border-color:var(--warn)}.Info{color:var(--mut);border-color:var(--mut)}
+.ok{color:var(--ok);border-color:var(--ok)}.bad{color:var(--bad);border-color:var(--bad)}
+h3{margin:8px 0 4px}h4{margin:14px 0 4px;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+pre{background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:6px 0}
+.add{color:var(--ok)}.del{color:var(--bad)}.hunk{color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.err{color:var(--bad)}
+.flow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.step{flex:1;min-width:150px;background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Patch<span>Proof</span></h1>
+  <p class="sub">Find the flaw. Prove the fix. Every finding is confirmed by a real exploit test, then re-tested after patching.</p>
+  <button id="run">Run analysis on fixture/app.py</button>
+</header>
+<main id="out"></main>
+<script>
+const out = document.getElementById("out");
+const btn = document.getElementById("run");
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function badge(text, cls) { return el("span", "badge " + cls, text); }
+function field(card, label, text) { card.append(el("h4", "", label), el("div", "", text)); }
+
+function diffBlock(diff) {
+  const pre = el("pre");
+  diff.split("\n").forEach(line => {
+    const cls = line.startsWith("+") && !line.startsWith("+++") ? "add"
+      : line.startsWith("-") && !line.startsWith("---") ? "del"
+      : line.startsWith("@@") ? "hunk" : "";
+    pre.append(el("div", cls, line || " "));
+  });
+  return pre;
+}
+
+function render(d) {
+  out.replaceChildren();
+  const s = d.summary;
+  const stats = el("div", "stats");
+  [["Candidates", s.candidates], ["Confirmed", s.confirmed], ["False positives", s.false_positives],
+   ["Fixed", s.fixed + "/" + s.confirmed], ["Regression tests", s.regressions_passed + "/" + s.regressions_total]]
+    .forEach(([k, v]) => { const c = el("div", "stat"); c.append(el("b", "", String(v)), el("span", "", k)); stats.append(c); });
+  out.append(stats);
+
+  d.findings.forEach(f => {
+    const c = el("div", "card");
+    const top = el("div", "row");
+    top.append(badge(f.severity + (f.cvss ? " " + f.cvss : ""), f.severity),
+      badge(f.status === "confirmed" ? "CONFIRMED EXPLOITABLE" : "FALSE POSITIVE", f.status === "confirmed" ? "bad" : "ok"),
+      el("span", "", f.id + " · " + f.cwe));
+    c.append(top, el("h3", "", f.title));
+    c.append(el("h4", "", "Affected code"), el("div", "", f.file + ":" + f.line + (f.end_line !== f.line ? "-" + f.end_line : "") + " in " + f.function + "()"));
+    c.append(el("pre", "", f.snippet));
+    field(c, "Severity rationale", f.severity_rationale);
+    field(c, "Patch rationale", f.patch_rationale);
+    if (f.diff) { c.append(el("h4", "", "Proposed patch")); c.append(diffBlock(f.diff)); }
+    c.append(el("h4", "", "Verification"));
+    const flow = el("div", "flow");
+    [["Exploit before patch", f.exploit_before ? "SUCCEEDED (vulnerable)" : "failed (not exploitable)", f.exploit_before ? "bad" : "ok"],
+     ["Exploit after patch", f.status === "confirmed" ? (f.exploit_after ? "STILL WORKS" : "BLOCKED") : "n/a", f.status === "confirmed" && !f.exploit_after ? "ok" : "bad"],
+     ["Re-scan", f.status === "confirmed" ? (f.rescan_clean ? "pattern gone" : "still flagged") : "still flagged (benign)", f.status === "confirmed" && f.rescan_clean ? "ok" : "Info"]]
+      .forEach(([k, v, cls]) => { const st = el("div", "step"); st.append(el("div", "", k), badge(v, cls)); flow.append(st); });
+    c.append(flow);
+    out.append(c);
+  });
+
+  const rc = el("div", "card");
+  rc.append(el("h3", "", "Regression tests (expected behaviour preserved)"));
+  const t = el("table");
+  const hr = el("tr");
+  ["Test", "Before", "After"].forEach(h => hr.append(el("th", "", h)));
+  t.append(hr);
+  Object.keys(d.regressions.after).forEach(name => {
+    const r = el("tr");
+    r.append(el("td", "", name));
+    [d.regressions.before[name], d.regressions.after[name]].forEach(v => {
+      const td = el("td"); td.append(badge(v ? "PASS" : "FAIL", v ? "ok" : "bad")); r.append(td);
+    });
+    t.append(r);
+  });
+  rc.append(t);
+  out.append(rc);
+}
+
+btn.addEventListener("click", async () => {
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  try {
+    const res = await fetch("/api/run");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Server error");
+    render(data);
+  } catch (e) {
+    out.replaceChildren(el("p", "err", "Error: " + e.message));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Run analysis on fixture/app.py";
+  }
+});
+</script>
+</body>
+</html>

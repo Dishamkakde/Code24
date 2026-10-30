@@ -1,0 +1,86 @@
+rules:
+  - id: python-sqli-formatted-string
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute(f"...")
+          - pattern: $DB.execute("..." % ...)
+          - pattern: $DB.execute("...".format(...))
+          - pattern: $DB.execute($X + $Y)
+    message: "Potential SQL Injection via string formatting or concatenation in database query"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      confidence: HIGH
+      vulnerability_class: "SQL Injection"
+      references:
+        - "https://cwe.mitre.org/data/definitions/89.html"
+        - "https://owasp.org/www-community/attacks/SQL_Injection"
+      remediation: "Use parameterized queries or prepared statements (e.g., db.execute('SELECT * FROM users WHERE id = ?', (user_id,))) instead of string interpolation."
+
+  - id: python-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$METHOD(..., shell=True, ...)
+          - pattern: os.system(...)
+          - pattern: os.popen(...)
+    message: "Potential Command Injection: executing shell commands with shell=True or unvalidated input"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      confidence: HIGH
+      vulnerability_class: "Command Injection"
+      references:
+        - "https://cwe.mitre.org/data/definitions/78.html"
+      remediation: "Avoid passing shell=True to subprocess functions. Pass arguments as a list of strings and sanitize inputs."
+
+  - id: python-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: open(os.path.join($DIR, $INPUT), ...)
+          - pattern: open(f"{$DIR}/{$INPUT}", ...)
+    message: "Potential Path Traversal in file open operation"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      confidence: MEDIUM
+      vulnerability_class: "Path Traversal"
+      references:
+        - "https://cwe.mitre.org/data/definitions/22.html"
+      remediation: "Validate paths with os.path.realpath and os.path.commonpath to ensure they remain inside the intended directory."
+
+  - id: python-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads(...)
+          - pattern: pickle.load(...)
+          - pattern: yaml.load(..., Loader=yaml.Loader)
+    message: "Insecure Deserialization via pickle or unsafe YAML loader"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      confidence: HIGH
+      vulnerability_class: "Insecure Deserialization"
+      references:
+        - "https://cwe.mitre.org/data/definitions/502.html"
+      remediation: "Avoid deserializing untrusted data with pickle. Use json or safe loaders like yaml.safe_load."
+
+  - id: python-insecure-permissions
+    patterns:
+      - pattern-either:
+          - pattern: os.chmod($PATH, 0o777)
+          - pattern: os.chmod($PATH, 0o666)
+          - pattern: os.open($PATH, $FLAGS, 0o666)
+    message: "Insecure File Permissions: world-writable or overly permissive permissions granted"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-732"
+      confidence: HIGH
+      vulnerability_class: "Incorrect Permission Assignment"
+      references:
+        - "https://cwe.mitre.org/data/definitions/732.html"
+      remediation: "Restrict permissions to owner only (e.g. 0o600 for read/write or 0o700 for directories)."

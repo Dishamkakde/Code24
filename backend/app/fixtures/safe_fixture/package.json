@@ -1,0 +1,7 @@
+{
+  "name": "safe-app",
+  "version": "1.0.0",
+  "description": "Safe test fixture",
+  "main": "index.js",
+  "dependencies": {}
+}

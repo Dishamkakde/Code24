@@ -1,0 +1,143 @@
+{
+  "type": "bundle",
+  "id": "bundle--8b382cf8-92e1-4c63-b8e7-e95b0b2b801a",
+  "spec_version": "2.1",
+  "metadata": {
+    "dataset_name": "MITRE ATT&CK Enterprise Matrix",
+    "attack_version": "v15.1",
+    "domain": "enterprise-attack",
+    "retrieval_date": "2026-05-15T12:00:00Z",
+    "source_url": "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json",
+    "source_organization": "MITRE Corporation",
+    "license": "https://attack.mitre.org/resources/terms-of-use/",
+    "curated_by": "Damage Control / PatchProof Security Engineering"
+  },
+  "objects": [
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--3f8830de-864b-4229-a576-bd6b71872d3e",
+      "name": "Exploit Public-Facing Application",
+      "technique_id": "T1190",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "initial-access" }
+      ],
+      "tactics": ["Initial Access"],
+      "description": "Adversaries may attempt to exploit weaknesses in internet-facing software, such as web applications, servers, or APIs, to gain initial access to an environment.",
+      "url": "https://attack.mitre.org/techniques/T1190/",
+      "platforms": ["Linux", "Windows", "macOS", "Containers"],
+      "data_sources": ["Application Log: Application Log Content", "Network Traffic: Network Traffic Flow"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--d1fcf083-a721-4223-aedf-bf8960798d62",
+      "name": "Command and Scripting Interpreter",
+      "technique_id": "T1059",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "execution" }
+      ],
+      "tactics": ["Execution"],
+      "description": "Adversaries may abuse command and script interpreters to execute commands, scripts, or binaries.",
+      "url": "https://attack.mitre.org/techniques/T1059/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["Command: Command Execution", "Process: Process Creation"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--b96a9254-8c83-4903-8d6d-2c1b48b6b158",
+      "name": "Command and Scripting Interpreter: Unix Shell",
+      "technique_id": "T1059.004",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "execution" }
+      ],
+      "tactics": ["Execution"],
+      "description": "Adversaries may abuse Unix shells to execute various commands or scripts within an environment.",
+      "url": "https://attack.mitre.org/techniques/T1059/004/",
+      "platforms": ["Linux", "macOS"],
+      "data_sources": ["Process: Process Creation"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--970a4c2b-3139-4666-8f26-f54ebcc5f390",
+      "name": "Command and Scripting Interpreter: Python",
+      "technique_id": "T1059.006",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "execution" }
+      ],
+      "tactics": ["Execution"],
+      "description": "Adversaries may abuse Python interpreters to execute malicious code or scripts.",
+      "url": "https://attack.mitre.org/techniques/T1059/006/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["Command: Command Execution", "Process: Process Creation"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--30208d3e-046e-4723-9979-90e7a4ea2933",
+      "name": "Unsecured Credentials: Credentials In Files",
+      "technique_id": "T1552.001",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "credential-access" }
+      ],
+      "tactics": ["Credential Access"],
+      "description": "Adversaries may search for private keys, passwords, API tokens, or other credentials stored in plaintext within source code, configuration files, or logs.",
+      "url": "https://attack.mitre.org/techniques/T1552/001/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["File: File Access", "File: File Modification"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--50e3713c-81cf-4171-8664-9be1a806655c",
+      "name": "File and Directory Permissions Modification",
+      "technique_id": "T1222",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "defense-evasion" }
+      ],
+      "tactics": ["Defense Evasion"],
+      "description": "Adversaries may modify file or directory permissions/attributes to make them world-readable or world-writable, evading security controls or facilitating access.",
+      "url": "https://attack.mitre.org/techniques/T1222/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["File: File Modification"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--7bc57495-ea59-4380-be31-a64ba124d183",
+      "name": "File and Directory Discovery",
+      "technique_id": "T1083",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "discovery" }
+      ],
+      "tactics": ["Discovery"],
+      "description": "Adversaries may enumerate files and directories to locate sensitive configuration files or critical assets.",
+      "url": "https://attack.mitre.org/techniques/T1083/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["Process: Process Creation", "Command: Command Execution"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--e3a51f22-5ff8-4107-b2f7-07ea50a97b21",
+      "name": "Data from Local System",
+      "technique_id": "T1005",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "collection" }
+      ],
+      "tactics": ["Collection"],
+      "description": "Adversaries may search for and collect sensitive data from local files, directories, or databases.",
+      "url": "https://attack.mitre.org/techniques/T1005/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["File: File Access", "Command: Command Execution"]
+    },
+    {
+      "type": "attack-pattern",
+      "id": "attack-pattern--232b7f21-aad9-4809-95a9-467f394467d5",
+      "name": "Endpoint Denial of Service",
+      "technique_id": "T1499",
+      "kill_chain_phases": [
+        { "kill_chain_name": "mitre-attack", "phase_name": "impact" }
+      ],
+      "tactics": ["Impact"],
+      "description": "Adversaries may perform endpoint denial of service attacks to degrade or block the availability of services or resources to users.",
+      "url": "https://attack.mitre.org/techniques/T1499/",
+      "platforms": ["Linux", "Windows", "macOS"],
+      "data_sources": ["Sensor Health: Host Status"]
+    }
+  ]
+}

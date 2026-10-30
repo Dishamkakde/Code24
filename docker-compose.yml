@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: damage-control-backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - damage_ctrl_storage:/app/backend/storage
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  scanner-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: damage-control-worker
+    command: ["python", "-m", "app.worker"]
+    volumes:
+      - damage_ctrl_storage:/app/backend/storage
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys, sqlite3; conn = sqlite3.connect('/app/backend/storage/damage_control.db'); conn.execute('SELECT 1'); sys.exit(0)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  damage_ctrl_storage:
+    name: damage_ctrl_storage
