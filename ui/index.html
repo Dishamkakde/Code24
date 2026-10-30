@@ -1,133 +1,1743 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PatchProof</title>
-<style>
-:root{--bg:#0e1116;--card:#161b22;--line:#2a313c;--tx:#e6edf3;--mut:#8b949e;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#58a6ff}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
-header{padding:28px 24px 8px;max-width:1000px;margin:auto}
-h1{margin:0;font-size:28px} h1 span{color:var(--acc)}
-p.sub{color:var(--mut);margin:4px 0 16px}
-main{max-width:1000px;margin:auto;padding:0 24px 60px}
-button{background:var(--acc);color:#04111f;border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:15px}
-button:disabled{opacity:.5;cursor:wait}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:20px 0}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
-.stat b{display:block;font-size:24px}.stat span{color:var(--mut);font-size:13px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.badge{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;border:1px solid}
-.Critical{color:var(--bad);border-color:var(--bad)}.High{color:#ff8a4c;border-color:#ff8a4c}
-.Medium{color:var(--warn);border-color:var(--warn)}.Info{color:var(--mut);border-color:var(--mut)}
-.ok{color:var(--ok);border-color:var(--ok)}.bad{color:var(--bad);border-color:var(--bad)}
-h3{margin:8px 0 4px}h4{margin:14px 0 4px;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-pre{background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:6px 0}
-.add{color:var(--ok)}.del{color:var(--bad)}.hunk{color:var(--acc)}
-table{width:100%;border-collapse:collapse;font-size:14px}
-td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
-.err{color:var(--bad)}
-.flow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.step{flex:1;min-width:150px;background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distill — Built for people. Read by machines.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sans: "Inter", system-ui, -apple-system, sans-serif;
+      --serif: "Newsreader", Georgia, serif;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+      --bg: #EEF0F2;
+      --ink: #0F1115;
+      --body: #2A2E35;
+      --muted: #8B9098;
+      --code: #7A7F88;
+      --comment: #B3B8BF;
+      --hot: #FF5A1F;
+      --hot-soft: #FFE1D3;
+
+      --cw: 46vw;
+      --ch: 52vh;
+      --gap: 4.75vw;
+      --top: 40.2vh;
+    }
+
+    @media (max-width: 768px) {
+      :root {
+        --cw: 84vw;
+        --ch: 54vw;
+        --gap: 7vw;
+        --top: 54svh;
+      }
+    }
+
+    @media (max-width: 768px) and (max-height: 700px) {
+      :root {
+        --top: 58svh;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ============================================================
+       NAVIGATION
+       ============================================================ */
+    nav.top-nav {
+      height: 56px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 56px;
+      position: relative;
+      z-index: 50;
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .brand-logo svg {
+      width: 19px;
+      height: 23px;
+      flex-shrink: 0;
+      color: currentColor;
+    }
+
+    .brand-name {
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 23px;
+      letter-spacing: -0.035em;
+      line-height: 1;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 38px;
+    }
+
+    .nav-link {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--body);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: opacity 0.2s ease;
+    }
+
+    .nav-link:hover {
+      opacity: 0.75;
+    }
+
+    .nav-link svg {
+      width: 8px;
+      height: 5px;
+      opacity: 0.7;
+    }
+
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-signin {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 12.5px;
+      color: var(--body);
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .nav-signin:hover {
+      opacity: 0.75;
+    }
+
+    .btn-trial {
+      height: 32px;
+      padding: 0 17px;
+      border: 1px solid #C4C9CF;
+      background: rgba(255, 255, 255, 0.35);
+      border-radius: 9999px;
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 12.5px;
+      color: var(--body);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-trial:hover {
+      background: rgba(255, 255, 255, 0.65);
+      border-color: #adb3bb;
+    }
+
+    .btn-demo {
+      height: 32px;
+      padding: 0 17px;
+      border: none;
+      background: var(--hot);
+      border-radius: 9999px;
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 12.5px;
+      color: #FFFFFF;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .btn-demo:hover {
+      opacity: 0.92;
+    }
+
+    /* ============================================================
+       HERO COPY
+       ============================================================ */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 34vw;
+      gap: 4vw;
+      padding: 30px 8.9vw 0;
+      position: relative;
+      z-index: 45;
+    }
+
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--body);
+    }
+
+    .hero-headline {
+      margin-top: 14px;
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: clamp(30px, 3vw, 58px);
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+    }
+
+    .hero-headline em {
+      font-style: italic;
+      display: block;
+    }
+
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .hero-paragraph {
+      font-family: var(--sans);
+      font-weight: 400;
+      font-size: clamp(14px, 1.05vw, 19px);
+      line-height: 1.55;
+      color: var(--body);
+      max-width: 34vw;
+    }
+
+    .hero-button {
+      margin-top: 20px;
+      height: 40px;
+      padding: 0 22px;
+      background: var(--hot);
+      border: none;
+      border-radius: 9999px;
+      color: #FFFFFF;
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .hero-button:hover {
+      transform: translateY(-2px);
+    }
+
+    /* ============================================================
+       THE SCANNER LINE & COUNTER BADGE
+       ============================================================ */
+    .scan {
+      position: absolute;
+      left: 50%;
+      top: calc(var(--top) - 14px);
+      height: calc(var(--ch) + 40px);
+      width: 0;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    .scan-core {
+      position: absolute;
+      left: -2px;
+      top: 0;
+      width: 4px;
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #ff7a3c 0%, #FF5A1F 12%, #FF5A1F 88%, #ff7a3c 100%);
+      box-shadow: 0 0 10px 2px rgba(255, 90, 31, 0.85), 0 0 34px 10px rgba(255, 90, 31, 0.38);
+    }
+
+    .scan-halo {
+      position: absolute;
+      left: 0;
+      top: 4%;
+      height: 92%;
+      width: 42px;
+      background: linear-gradient(90deg, rgba(255, 110, 50, 0.55) 0%, rgba(255, 110, 50, 0) 100%);
+      filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .badge {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(var(--top) - 60px);
+      z-index: 70;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .badge-label {
+      font-family: var(--sans);
+      font-weight: 400;
+      font-size: 11.5px;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .badge-pill {
+      height: 26px;
+      border-radius: 9999px;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: stretch;
+      box-shadow: 0 0 18px rgba(255, 90, 31, 0.35);
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 12.5px;
+      line-height: 1;
+    }
+
+    .badge-number {
+      background: var(--hot);
+      color: #FFFFFF;
+      padding: 0 11px 0 13px;
+      min-width: 8.2ch;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .badge-percent {
+      background: var(--hot-soft);
+      color: #D9430F;
+      font-size: 11px;
+      padding: 0 12px 0 10px;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    /* ============================================================
+       THE BELT STAGE
+       ============================================================ */
+    .belt {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      top: calc(var(--top) - 70px);
+      height: calc(var(--ch) + 140px);
+      cursor: grab;
+      touch-action: pan-y;
+      overflow: visible;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .belt.grabbing {
+      cursor: grabbing;
+    }
+
+    .codes {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      mask-image: linear-gradient(90deg, transparent 0, #000 24vw);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24vw);
+      z-index: 10;
+    }
+
+    @media (max-width: 768px) {
+      .codes {
+        mask-image: linear-gradient(90deg, transparent 0, #000 30vw);
+        -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 30vw);
+      }
+    }
+
+    .cards {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+    }
+
+    canvas.fx {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Common Card & Code placement */
+    .card-shell,
+    .code-shell {
+      position: absolute;
+      top: 70px;
+      left: 0;
+      width: var(--cw);
+      height: var(--ch);
+      border-radius: 1.6vw;
+      overflow: hidden;
+      will-change: transform, clip-path;
+      container-type: inline-size;
+    }
+
+    .card-shell {
+      color: #FFFFFF;
+      font-family: var(--sans);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    /* Shared card header (.k-nav) */
+    .k-nav {
+      position: absolute;
+      left: 4.4cqw;
+      right: 4.4cqw;
+      top: 4cqw;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+    }
+
+    .k-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 1.3cqw;
+    }
+
+    .k-logo svg {
+      width: 5.4cqw;
+      height: 4.2cqw;
+      display: block;
+    }
+
+    .k-brand {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 4.6cqw;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .k-menu {
+      display: flex;
+      align-items: center;
+      gap: 3.4cqw;
+    }
+
+    .k-menu-item {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 1.32cqw;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      line-height: 1;
+    }
+
+    .k-menu-pill {
+      padding: 0.7cqw 1.6cqw;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 9999px;
+      margin: -0.7cqw -1.6cqw;
+      opacity: 1;
+    }
+
+    /* ============================================================
+       CARD 1: HOME
+       ============================================================ */
+    .card-home {
+      background-image: linear-gradient(180deg, rgba(20, 10, 4, 0.25) 0%, rgba(20, 10, 4, 0) 30%, rgba(20, 10, 4, 0.55) 100%),
+        url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/0e201fcd-ffc0-46a0-bd06-faa07bf0e84b.webp');
+    }
+
+    .card-home .home-stats {
+      position: absolute;
+      bottom: 4.4cqw;
+      left: 4.4cqw;
+      display: flex;
+      align-items: flex-end;
+      gap: 4cqw;
+    }
+
+    .card-home .stat-unit {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-home .stat-num {
+      font-family: var(--sans);
+      font-weight: 300;
+      font-size: 9cqw;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+    }
+
+    .card-home .stat-lbl {
+      font-family: var(--sans);
+      font-size: 1.9cqw;
+      margin-top: 0.8cqw;
+      opacity: 0.9;
+    }
+
+    .card-home .home-divider {
+      width: 1px;
+      height: 7cqw;
+      background: rgba(255, 255, 255, 0.35);
+      margin-bottom: 0.5cqw;
+    }
+
+    .card-home .home-tagline {
+      position: absolute;
+      bottom: 4.4cqw;
+      right: 4.4cqw;
+      width: 24cqw;
+      font-family: var(--sans);
+      font-size: 2.2cqw;
+      line-height: 1.25;
+      text-align: right;
+    }
+
+    /* ============================================================
+       CARD 2: PRICE
+       ============================================================ */
+    .card-price {
+      background: radial-gradient(120% 90% at 20% 110%, #FF6A1F 0%, #FF9A4A 35%, #F7C79A 62%, #EFD9C4 100%);
+      color: #2A1406;
+    }
+
+    .card-price .k-logo,
+    .card-price .k-brand,
+    .card-price .k-menu-item {
+      color: #2A1406;
+    }
+
+    .card-price .k-menu-pill {
+      border-color: #2A1406;
+    }
+
+    .card-price .price-big {
+      position: absolute;
+      top: 38%;
+      left: 4.4cqw;
+      font-family: var(--sans);
+      font-weight: 300;
+      font-size: 13cqw;
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .card-price .price-curr {
+      font-size: 0.4em;
+      vertical-align: top;
+      display: inline-block;
+      margin-top: 0.15em;
+      margin-right: 0.1em;
+    }
+
+    .card-price .price-sub {
+      position: absolute;
+      top: 62%;
+      left: 4.4cqw;
+      font-family: var(--mono);
+      font-size: 1.6cqw;
+      letter-spacing: 0.05em;
+      opacity: 0.75;
+    }
+
+    .card-price .price-plans {
+      position: absolute;
+      top: 33%;
+      right: 4.4cqw;
+      width: 36cqw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-price .plan-row {
+      border-top: 1px solid rgba(42, 20, 6, 0.25);
+      padding: 1.2cqw 0;
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--sans);
+      font-size: 1.6cqw;
+    }
+
+    .card-price .plan-name {
+      font-weight: 500;
+    }
+
+    .card-price .price-cta {
+      position: absolute;
+      bottom: 4.4cqw;
+      left: 4.4cqw;
+      background: #2A1406;
+      color: #F7E6D6;
+      padding: 1cqw 2.2cqw;
+      border-radius: 9999px;
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 1.5cqw;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    /* ============================================================
+       CARD 3: CASE STUDY
+       ============================================================ */
+    .card-case {
+      position: relative;
+    }
+
+    .card-case-bg {
+      position: absolute;
+      inset: -5%;
+      width: 110%;
+      height: 110%;
+      background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/2bebad68-8177-446a-9550-d64074166364.webp');
+      background-size: cover;
+      background-position: center;
+      filter: blur(1.4cqw) saturate(1.1);
+      transform: scale(1.12);
+      z-index: 1;
+    }
+
+    .card-case-veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(25, 14, 8, 0.15) 0%, rgba(25, 14, 8, 0.55) 100%);
+      z-index: 2;
+    }
+
+    .card-case-content {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+    }
+
+    .card-case .case-kicker {
+      position: absolute;
+      top: 17%;
+      left: 4.4cqw;
+      font-family: var(--mono);
+      font-size: 1.4cqw;
+      letter-spacing: 0.08em;
+      opacity: 0.85;
+      text-transform: uppercase;
+    }
+
+    .card-case .case-title {
+      position: absolute;
+      top: 24%;
+      left: 4.4cqw;
+      width: 56cqw;
+      font-family: var(--serif);
+      font-size: 4.6cqw;
+      line-height: 1.15;
+      font-weight: 400;
+    }
+
+    .card-case .case-stats {
+      position: absolute;
+      bottom: 4.4cqw;
+      left: 4.4cqw;
+      right: 4.4cqw;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 3cqw;
+    }
+
+    .card-case .c-stat {
+      border-top: 1px solid rgba(255, 255, 255, 0.35);
+      padding-top: 1.2cqw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-case .c-num {
+      font-family: var(--sans);
+      font-weight: 300;
+      font-size: 6cqw;
+      line-height: 1;
+    }
+
+    .card-case .c-lbl {
+      font-family: var(--sans);
+      font-size: 1.4cqw;
+      margin-top: 0.6cqw;
+      opacity: 0.85;
+    }
+
+    /* ============================================================
+       CARD 4: VISION
+       ============================================================ */
+    .card-vision {
+      background: #1B1311;
+    }
+
+    .card-vision .vision-tiles {
+      position: absolute;
+      top: 21%;
+      left: 4.4cqw;
+      right: 4.4cqw;
+      height: 46%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr;
+      gap: 2cqw;
+    }
+
+    .card-vision .tile-img {
+      border-radius: 1.4cqw;
+      background-size: cover;
+      background-position: center;
+      height: 100%;
+    }
+
+    .card-vision .tile-foundry {
+      background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/e80ba08d-d7b6-4b27-b0cd-8d0ad09c788c.webp');
+    }
+
+    .card-vision .tile-mesa {
+      background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/62b0d7c1-3eb7-44bd-9b19-57b975fb250f.webp');
+    }
+
+    .card-vision .tile-quote {
+      display: flex;
+      align-items: center;
+      padding: 0 1cqw;
+      font-family: var(--serif);
+      font-size: 3.4cqw;
+      line-height: 1.25;
+      font-weight: 400;
+    }
+
+    .card-vision .tile-quote em {
+      opacity: 0.75;
+      font-style: italic;
+    }
+
+    .card-vision .vision-footer {
+      position: absolute;
+      bottom: 4.4cqw;
+      left: 4.4cqw;
+      right: 4.4cqw;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-family: var(--sans);
+      font-size: 1.6cqw;
+      opacity: 0.7;
+    }
+
+    /* ============================================================
+       CARD 5: ALLOY
+       ============================================================ */
+    .card-alloy {
+      background: #140C08;
+      position: relative;
+    }
+
+    .card-alloy-bg {
+      position: absolute;
+      inset: -3%;
+      width: 106%;
+      height: 106%;
+      background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/156ff74d-ee37-4443-8f3a-11ae2095ed4c.webp');
+      background-size: cover;
+      background-position: center;
+      filter: blur(0.6cqw);
+      transform: scale(1.06);
+      z-index: 1;
+    }
+
+    .card-alloy-veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 40%, rgba(20, 12, 8, 0.7) 100%);
+      z-index: 2;
+    }
+
+    .card-alloy-content {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+    }
+
+    .card-alloy .alloy-headline {
+      position: absolute;
+      bottom: 4.4cqw;
+      left: 4.4cqw;
+      font-family: var(--serif);
+      font-size: 7.4cqw;
+      line-height: 0.98;
+      font-weight: 400;
+    }
+
+    .card-alloy .alloy-headline em {
+      font-style: italic;
+      display: block;
+    }
+
+    .card-alloy .alloy-specs {
+      position: absolute;
+      bottom: 4.4cqw;
+      right: 4.4cqw;
+      width: 30cqw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-alloy .spec-row {
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 1cqw 0;
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--sans);
+      font-size: 1.5cqw;
+    }
+
+    /* ============================================================
+       CARD 6: JOURNAL
+       ============================================================ */
+    .card-journal {
+      background: #E9ECF1;
+      color: #121A2A;
+    }
+
+    .card-journal .k-logo,
+    .card-journal .k-brand,
+    .card-journal .k-menu-item {
+      color: #121A2A;
+      opacity: 0.7;
+    }
+
+    .card-journal .k-menu-pill {
+      border-color: #121A2A;
+      opacity: 1;
+    }
+
+    .card-journal .journal-header {
+      position: absolute;
+      top: 23%;
+      left: 4.4cqw;
+    }
+
+    .card-journal .journal-title {
+      font-family: var(--serif);
+      font-size: 5.6cqw;
+      line-height: 1.05;
+      font-weight: 400;
+      color: #121A2A;
+    }
+
+    .card-journal .journal-title em {
+      color: #46618E;
+      font-style: italic;
+      display: block;
+      font-size: 0.88em;
+    }
+
+    .card-journal .journal-posts {
+      position: absolute;
+      bottom: 4.4cqw;
+      left: 4.4cqw;
+      right: 4.4cqw;
+      display: grid;
+      grid-template-columns: 1.25fr 1fr 1fr;
+      gap: 2.2cqw;
+    }
+
+    .card-journal .post-thumb {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 1.2cqw;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .card-journal .post-kicker {
+      font-family: var(--mono);
+      font-size: 1.15cqw;
+      color: #6A7891;
+      margin-top: 1cqw;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .card-journal .post-heading {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 1.45cqw;
+      color: #121A2A;
+      margin-top: 0.4cqw;
+      line-height: 1.25;
+    }
+
+    /* ============================================================
+       CODE BLOCKS (.code-shell)
+       ============================================================ */
+    .code-shell {
+      pointer-events: none;
+      visibility: hidden;
+      white-space: pre;
+    }
+
+    .code-html {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 50%;
+      padding: 3cqw 3cqw;
+      color: var(--code);
+      font-family: var(--mono);
+      font-size: 1.56cqw;
+      line-height: 1.39;
+      font-weight: 400;
+      white-space: pre;
+    }
+
+    .code-meta {
+      position: absolute;
+      left: 51%;
+      top: 0;
+      width: 48%;
+      padding: 3cqw 0;
+      color: var(--comment);
+      font-family: var(--mono);
+      font-size: 1.56cqw;
+      line-height: 1.39;
+      font-weight: 400;
+      white-space: pre;
+    }
+  </style>
 </head>
 <body>
-<header>
-  <h1>Patch<span>Proof</span></h1>
-  <p class="sub">Find the flaw. Prove the fix. Every finding is confirmed by a real exploit test, then re-tested after patching.</p>
-  <button id="run">Run analysis on fixture/app.py</button>
-</header>
-<main id="out"></main>
-<script>
-const out = document.getElementById("out");
-const btn = document.getElementById("run");
+  <div class="stage">
+    <!-- Top Nav -->
+    <nav class="top-nav">
+      <a href="#" class="brand-logo">
+        <svg viewBox="0 0 19 23" fill="none">
+          <path d="M9.5 1C9.5 1 2 10.5 2 15.5C2 19.6421 5.35786 22 9.5 22C13.6421 22 17 19.6421 17 15.5C17 10.5 9.5 1 9.5 1Z" fill="currentColor"/>
+          <path d="M5.5 16C5.5 13 7.5 10.5 9.5 9.5" stroke="var(--bg)" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">Distill</span>
+      </a>
 
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
-function badge(text, cls) { return el("span", "badge " + cls, text); }
-function field(card, label, text) { card.append(el("h4", "", label), el("div", "", text)); }
+      <div class="nav-links">
+        <a href="#product" class="nav-link">
+          Product
+          <svg viewBox="0 0 8 5" fill="none"><path d="M1 1L4 4L7 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#use-cases" class="nav-link">
+          Use cases
+          <svg viewBox="0 0 8 5" fill="none"><path d="M1 1L4 4L7 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#resources" class="nav-link">
+          Resources
+          <svg viewBox="0 0 8 5" fill="none"><path d="M1 1L4 4L7 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+      </div>
 
-function diffBlock(diff) {
-  const pre = el("pre");
-  diff.split("\n").forEach(line => {
-    const cls = line.startsWith("+") && !line.startsWith("+++") ? "add"
-      : line.startsWith("-") && !line.startsWith("---") ? "del"
-      : line.startsWith("@@") ? "hunk" : "";
-    pre.append(el("div", cls, line || " "));
-  });
-  return pre;
-}
+      <div class="nav-right">
+        <a href="#signin" class="nav-signin">Sign in</a>
+        <a href="#trial" class="btn-trial">Start a free trial</a>
+        <a href="#demo" class="btn-demo">Book a demo</a>
+      </div>
+    </nav>
 
-function render(d) {
-  out.replaceChildren();
-  const s = d.summary;
-  const stats = el("div", "stats");
-  [["Candidates", s.candidates], ["Confirmed", s.confirmed], ["False positives", s.false_positives],
-   ["Fixed", s.fixed + "/" + s.confirmed], ["Regression tests", s.regressions_passed + "/" + s.regressions_total]]
-    .forEach(([k, v]) => { const c = el("div", "stat"); c.append(el("b", "", String(v)), el("span", "", k)); stats.append(c); });
-  out.append(stats);
+    <!-- Hero Copy -->
+    <header class="hero-grid">
+      <div class="hero-left">
+        <div class="hero-eyebrow">AI READABILITY</div>
+        <h1 class="hero-headline">
+          Built for people.
+          <em>Read by machines.</em>
+        </h1>
+      </div>
+      <div class="hero-right">
+        <p class="hero-paragraph">
+          Distill detects AI agents at the edge and serves them a clean, token&#8209;light version of every page, without changing a pixel of what people see.
+        </p>
+        <a href="#explore" class="hero-button">Explore Distill</a>
+      </div>
+    </header>
 
-  d.findings.forEach(f => {
-    const c = el("div", "card");
-    const top = el("div", "row");
-    top.append(badge(f.severity + (f.cvss ? " " + f.cvss : ""), f.severity),
-      badge(f.status === "confirmed" ? "CONFIRMED EXPLOITABLE" : "FALSE POSITIVE", f.status === "confirmed" ? "bad" : "ok"),
-      el("span", "", f.id + " · " + f.cwe));
-    c.append(top, el("h3", "", f.title));
-    c.append(el("h4", "", "Affected code"), el("div", "", f.file + ":" + f.line + (f.end_line !== f.line ? "-" + f.end_line : "") + " in " + f.function + "()"));
-    c.append(el("pre", "", f.snippet));
-    field(c, "Severity rationale", f.severity_rationale);
-    field(c, "Patch rationale", f.patch_rationale);
-    if (f.diff) { c.append(el("h4", "", "Proposed patch")); c.append(diffBlock(f.diff)); }
-    c.append(el("h4", "", "Verification"));
-    const flow = el("div", "flow");
-    [["Exploit before patch", f.exploit_before ? "SUCCEEDED (vulnerable)" : "failed (not exploitable)", f.exploit_before ? "bad" : "ok"],
-     ["Exploit after patch", f.status === "confirmed" ? (f.exploit_after ? "STILL WORKS" : "BLOCKED") : "n/a", f.status === "confirmed" && !f.exploit_after ? "ok" : "bad"],
-     ["Re-scan", f.status === "confirmed" ? (f.rescan_clean ? "pattern gone" : "still flagged") : "still flagged (benign)", f.status === "confirmed" && f.rescan_clean ? "ok" : "Info"]]
-      .forEach(([k, v, cls]) => { const st = el("div", "step"); st.append(el("div", "", k), badge(v, cls)); flow.append(st); });
-    c.append(flow);
-    out.append(c);
-  });
+    <!-- Scanner Line -->
+    <div class="scan" id="scanner">
+      <i class="scan-core"></i>
+      <b class="scan-halo"></b>
+    </div>
 
-  const rc = el("div", "card");
-  rc.append(el("h3", "", "Regression tests (expected behaviour preserved)"));
-  const t = el("table");
-  const hr = el("tr");
-  ["Test", "Before", "After"].forEach(h => hr.append(el("th", "", h)));
-  t.append(hr);
-  Object.keys(d.regressions.after).forEach(name => {
-    const r = el("tr");
-    r.append(el("td", "", name));
-    [d.regressions.before[name], d.regressions.after[name]].forEach(v => {
-      const td = el("td"); td.append(badge(v ? "PASS" : "FAIL", v ? "ok" : "bad")); r.append(td);
-    });
-    t.append(r);
-  });
-  rc.append(t);
-  out.append(rc);
-}
+    <!-- Floating Counter Badge -->
+    <div class="badge" id="badge">
+      <span class="badge-label">Token reduction</span>
+      <div class="badge-pill">
+        <span class="badge-number" id="badge-num">&#8722;48,193</span>
+        <span class="badge-percent" id="badge-pct">91% less</span>
+      </div>
+    </div>
 
-btn.addEventListener("click", async () => {
-  btn.disabled = true;
-  btn.textContent = "Running...";
-  try {
-    const res = await fetch("/api/run");
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Server error");
-    render(data);
-  } catch (e) {
-    out.replaceChildren(el("p", "err", "Error: " + e.message));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Run analysis on fixture/app.py";
-  }
-});
-</script>
+    <!-- The Conveyor Belt -->
+    <div class="belt" id="belt">
+      <!-- Code Layer -->
+      <div class="codes" id="codes-layer">
+        <!-- Code 1 (home) -->
+        <div class="code-shell" id="code-0">
+          <div class="code-html">&lt;h1&gt;Kessler — Advanced materials&lt;/h1&gt;
+&lt;p&gt;
+  Advanced materials for a stronger
+  tomorrow. Ceramic-matrix alloys made
+  with desert sand and solar heat.
+&lt;/p&gt;
+&lt;h2&gt;At a glance&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Strength: 200x steel by weight&lt;/li&gt;
+  &lt;li&gt;Emissions: 87% lower&lt;/li&gt;
+  &lt;li&gt;Plants: Nevada, Atacama, Oman&lt;/li&gt;
+  &lt;li&gt;Founded: 2019&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Products&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;K-Alloy 7 — structural&lt;/li&gt;
+  &lt;li&gt;Basalt fibre — tensile&lt;/li&gt;
+  &lt;li&gt;Ceramic matrix — thermal&lt;/li&gt;
+&lt;/ul&gt;
+&lt;a href="/demo"&gt;Book a demo&lt;/a&gt;</div>
+          <div class="code-meta">&lt;!-- distilled: 6,140 tokens --&gt;
+&lt;!-- original: 70,411 tokens --&gt;
+&lt;!-- kessler.co/ --&gt;</div>
+        </div>
+
+        <!-- Code 2 (price) -->
+        <div class="code-shell" id="code-1">
+          <div class="code-html">&lt;h1&gt;Kessler — Pricing&lt;/h1&gt;
+&lt;p&gt;
+  Three plans for every scale of
+  production. Start small, scale to
+  full foundry output.
+&lt;/p&gt;
+&lt;h2&gt;Pilot — $299 / mo&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Sample batches: 4 / mo&lt;/li&gt;
+  &lt;li&gt;Alloy grades: 2&lt;/li&gt;
+  &lt;li&gt;Support: email&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Industrial — $2,400 / mo&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Tonnage: up to 40 t / mo&lt;/li&gt;
+  &lt;li&gt;Alloy grades: all&lt;/li&gt;
+  &lt;li&gt;Certification: ISO 9001&lt;/li&gt;
+  &lt;li&gt;Support: dedicated engineer&lt;/li&gt;
+&lt;/ul&gt;</div>
+          <div class="code-meta">&lt;!-- distilled: 4,960 tokens --&gt;
+&lt;!-- original: 41,208 tokens --&gt;
+&lt;!-- kessler.co/pricing --&gt;</div>
+        </div>
+
+        <!-- Code 3 (case) -->
+        <div class="code-shell" id="code-2">
+          <div class="code-html">&lt;h1&gt;Case study: Atlas Rail&lt;/h1&gt;
+&lt;p&gt;
+  How Atlas Rail cut track weight by
+  a third in eighteen months.
+&lt;/p&gt;
+&lt;h2&gt;The challenge&lt;/h2&gt;
+&lt;p&gt;
+  1,200 km of desert line, rails
+  warping above 50 °C every summer.
+&lt;/p&gt;
+&lt;h2&gt;The result&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;34% lighter track sections&lt;/li&gt;
+  &lt;li&gt;3.4x longer service life&lt;/li&gt;
+  &lt;li&gt;0 unplanned closures in 2025&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;
+  We stopped losing summers.
+  — Head of Infrastructure
+&lt;/p&gt;</div>
+          <div class="code-meta">&lt;!-- distilled: 6,300 tokens --&gt;
+&lt;!-- original: 98,432 tokens --&gt;
+&lt;!-- kessler.co/cases/atlas-rail --&gt;</div>
+        </div>
+
+        <!-- Code 4 (vision) -->
+        <div class="code-shell" id="code-3">
+          <div class="code-html">&lt;article&gt;
+  &lt;h1&gt;The Kessler vision&lt;/h1&gt;
+  &lt;p&gt;
+    Materials that outlast the people
+    who made them.
+  &lt;/p&gt;
+  &lt;p&gt;
+    We build where the sun is
+    strongest and the sand is free:
+    three plants, one closed loop.
+  &lt;/p&gt;
+  &lt;h2&gt;Principles&lt;/h2&gt;
+  &lt;ol&gt;
+    &lt;li&gt;Heat from the sun, not gas&lt;/li&gt;
+    &lt;li&gt;Sand in, scrap back in&lt;/li&gt;
+    &lt;li&gt;Publish every number&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/article&gt;</div>
+          <div class="code-meta">&lt;!-- distilled: 8,215 tokens --&gt;
+&lt;!-- original: 55,870 tokens --&gt;
+&lt;!-- kessler.co/vision --&gt;</div>
+        </div>
+
+        <!-- Code 5 (alloy) -->
+        <div class="code-shell" id="code-4">
+          <div class="code-html">&lt;h1&gt;K-Alloy 7&lt;/h1&gt;
+&lt;p&gt;The carbon-negative alloy.&lt;/p&gt;
+&lt;h2&gt;Specification&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Tensile strength: 1,940 MPa&lt;/li&gt;
+  &lt;li&gt;Density: 2.9 g/cm³&lt;/li&gt;
+  &lt;li&gt;Max service temp: 1,150 °C&lt;/li&gt;
+  &lt;li&gt;CO₂: −0.4 kg per kg made&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Uses&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Rail, bridges, turbine housings&lt;/li&gt;
+&lt;/ul&gt;
+&lt;a href="/k-alloy-7.pdf"&gt;Datasheet&lt;/a&gt;</div>
+          <div class="code-meta">&lt;!-- distilled: 5,512 tokens --&gt;
+&lt;!-- original: 63,904 tokens --&gt;
+&lt;!-- kessler.co/products/k-alloy-7 --&gt;</div>
+        </div>
+
+        <!-- Code 6 (journal) -->
+        <div class="code-shell" id="code-5">
+          <div class="code-html">&lt;h1&gt;Kessler Journal&lt;/h1&gt;
+&lt;p&gt;Field notes from the flats.&lt;/p&gt;
+&lt;article&gt;
+  &lt;h2&gt;Mining nothing but light&lt;/h2&gt;
+  &lt;time&gt;2026-03-14&lt;/time&gt;
+&lt;/article&gt;
+&lt;article&gt;
+  &lt;h2&gt;Atacama, year one&lt;/h2&gt;
+  &lt;time&gt;2026-02-02&lt;/time&gt;
+&lt;/article&gt;
+&lt;article&gt;
+  &lt;h2&gt;Why we melt sand at noon&lt;/h2&gt;
+  &lt;time&gt;2026-01-09&lt;/time&gt;
+&lt;/article&gt;</div>
+          <div class="code-meta">&lt;!-- distilled: 7,602 tokens --&gt;
+&lt;!-- original: 47,316 tokens --&gt;
+&lt;!-- kessler.co/journal --&gt;</div>
+        </div>
+      </div>
+
+      <!-- Cards Layer -->
+      <div class="cards" id="cards-layer">
+        <!-- Card 1: Home -->
+        <div class="card-shell card-home" id="card-0">
+          <div class="k-nav">
+            <div class="k-logo">
+              <svg viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+                <polygon points="4,38 20,6 36,38" fill="none"/>
+                <polygon points="18,38 34,14 50,38" fill="none"/>
+              </svg>
+              <span class="k-brand">Kessler</span>
+            </div>
+            <div class="k-menu">
+              <span class="k-menu-item k-menu-pill">PRODUCTS</span>
+              <span class="k-menu-item">IMPACT</span>
+              <span class="k-menu-item">ABOUT</span>
+            </div>
+          </div>
+          <div class="home-stats">
+            <div class="stat-unit">
+              <span class="stat-num">200x</span>
+              <span class="stat-lbl">stronger</span>
+            </div>
+            <div class="home-divider"></div>
+            <div class="stat-unit">
+              <span class="stat-num">87%</span>
+              <span class="stat-lbl">lower emissions</span>
+            </div>
+          </div>
+          <div class="home-tagline">Advanced materials for a stronger tomorrow.</div>
+        </div>
+
+        <!-- Card 2: Price -->
+        <div class="card-shell card-price" id="card-1">
+          <div class="k-nav">
+            <div class="k-logo">
+              <svg viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+                <polygon points="4,38 20,6 36,38" fill="none"/>
+                <polygon points="18,38 34,14 50,38" fill="none"/>
+              </svg>
+              <span class="k-brand">Kessler</span>
+            </div>
+            <div class="k-menu">
+              <span class="k-menu-item">PRODUCTS</span>
+              <span class="k-menu-item k-menu-pill">PRICING</span>
+              <span class="k-menu-item">CONTACT</span>
+            </div>
+          </div>
+          <div class="price-big"><span class="price-curr">$</span>2,400</div>
+          <div class="price-sub">PER MONTH · INDUSTRIAL</div>
+          <div class="price-plans">
+            <div class="plan-row"><span class="plan-name">Pilot</span><span>$299</span></div>
+            <div class="plan-row"><span class="plan-name">Industrial</span><span>$2,400</span></div>
+            <div class="plan-row"><span class="plan-name">Foundry</span><span>Custom</span></div>
+          </div>
+          <a href="#pilot" class="price-cta">Start a pilot</a>
+        </div>
+
+        <!-- Card 3: Case Study -->
+        <div class="card-shell card-case" id="card-2">
+          <div class="card-case-bg"></div>
+          <div class="card-case-veil"></div>
+          <div class="card-case-content">
+            <div class="k-nav">
+              <div class="k-logo">
+                <svg viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+                  <polygon points="4,38 20,6 36,38" fill="none"/>
+                  <polygon points="18,38 34,14 50,38" fill="none"/>
+                </svg>
+                <span class="k-brand">Kessler</span>
+              </div>
+              <div class="k-menu">
+                <span class="k-menu-item">PRODUCTS</span>
+                <span class="k-menu-item k-menu-pill">IMPACT</span>
+                <span class="k-menu-item">ABOUT</span>
+              </div>
+            </div>
+            <div class="case-kicker">CASE STUDY · ATLAS RAIL</div>
+            <h2 class="case-title">How Atlas Rail cut track weight by a third in eighteen months</h2>
+            <div class="case-stats">
+              <div class="c-stat">
+                <span class="c-num">34%</span>
+                <span class="c-lbl">lighter track</span>
+              </div>
+              <div class="c-stat">
+                <span class="c-num">3.4x</span>
+                <span class="c-lbl">service life</span>
+              </div>
+              <div class="c-stat">
+                <span class="c-num">0</span>
+                <span class="c-lbl">unplanned closures</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Vision -->
+        <div class="card-shell card-vision" id="card-3">
+          <div class="k-nav">
+            <div class="k-logo">
+              <svg viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+                <polygon points="4,38 20,6 36,38" fill="none"/>
+                <polygon points="18,38 34,14 50,38" fill="none"/>
+              </svg>
+              <span class="k-brand">Kessler</span>
+            </div>
+            <div class="k-menu">
+              <span class="k-menu-item">PRODUCTS</span>
+              <span class="k-menu-item k-menu-pill">VISION</span>
+              <span class="k-menu-item">ABOUT</span>
+            </div>
+          </div>
+          <div class="vision-tiles">
+            <div class="tile-img tile-foundry"></div>
+            <div class="tile-img tile-mesa"></div>
+            <div class="tile-quote">
+              The Kessler vision: <em>materials that outlast the people who made them.</em>
+            </div>
+          </div>
+          <div class="vision-footer">
+            <span>How Kessler pours alloy<br>at the edge of the desert</span>
+            <span>Manifesto · 6 min</span>
+          </div>
+        </div>
+
+        <!-- Card 5: Alloy -->
+        <div class="card-shell card-alloy" id="card-4">
+          <div class="card-alloy-bg"></div>
+          <div class="card-alloy-veil"></div>
+          <div class="card-alloy-content">
+            <div class="k-nav">
+              <div class="k-logo">
+                <svg viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+                  <polygon points="4,38 20,6 36,38" fill="none"/>
+                  <polygon points="18,38 34,14 50,38" fill="none"/>
+                </svg>
+                <span class="k-brand">Kessler</span>
+              </div>
+              <div class="k-menu">
+                <span class="k-menu-item k-menu-pill">PRODUCTS</span>
+                <span class="k-menu-item">IMPACT</span>
+                <span class="k-menu-item">ABOUT</span>
+              </div>
+            </div>
+            <div class="alloy-headline">
+              The carbon&#8209;negative
+              <em>alloy.</em>
+            </div>
+            <div class="alloy-specs">
+              <div class="spec-row"><span>Product</span><span>K-Alloy 7</span></div>
+              <div class="spec-row"><span>Tensile</span><span>1,940 MPa</span></div>
+              <div class="spec-row"><span>Datasheet</span><span>PDF ↗</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 6: Journal -->
+        <div class="card-shell card-journal" id="card-5">
+          <div class="k-nav">
+            <div class="k-logo">
+              <svg viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+                <polygon points="4,38 20,6 36,38" fill="none"/>
+                <polygon points="18,38 34,14 50,38" fill="none"/>
+              </svg>
+              <span class="k-brand">Kessler</span>
+            </div>
+            <div class="k-menu">
+              <span class="k-menu-item">PRODUCTS</span>
+              <span class="k-menu-item k-menu-pill">JOURNAL</span>
+              <span class="k-menu-item">ABOUT</span>
+            </div>
+          </div>
+          <div class="journal-header">
+            <h2 class="journal-title">
+              Journal
+              <em>field notes from the flats</em>
+            </h2>
+          </div>
+          <div class="journal-posts">
+            <div class="j-post">
+              <div class="post-thumb" style="background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/7b6ad638-89ec-4dec-be74-d36fbff3ea53.webp');"></div>
+              <div class="post-kicker">FIELD NOTES</div>
+              <div class="post-heading">Mining nothing but light on the salt flats</div>
+            </div>
+            <div class="j-post">
+              <div class="post-thumb" style="background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/62b0d7c1-3eb7-44bd-9b19-57b975fb250f.webp');"></div>
+              <div class="post-kicker">PLANTS</div>
+              <div class="post-heading">Atacama, year one</div>
+            </div>
+            <div class="j-post">
+              <div class="post-thumb" style="background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/0e201fcd-ffc0-46a0-bd06-faa07bf0e84b.webp');"></div>
+              <div class="post-kicker">PROCESS</div>
+              <div class="post-heading">Why we melt sand at noon</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FX Canvas -->
+      <canvas class="fx" id="fx-canvas"></canvas>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // Card Token Metadata
+      const CARDS_DATA = [
+        { id: "home", original: 70411, distilled: 6140, saved: 64271, pct: "91% less", url: "kessler.co/" },
+        { id: "price", original: 41208, distilled: 4960, saved: 36248, pct: "88% less", url: "kessler.co/pricing" },
+        { id: "case", original: 98432, distilled: 6300, saved: 92132, pct: "94% less", url: "kessler.co/cases/atlas-rail" },
+        { id: "vision", original: 55870, distilled: 8215, saved: 47655, pct: "85% less", url: "kessler.co/vision" },
+        { id: "alloy", original: 63904, distilled: 5512, saved: 58392, pct: "91% less", url: "kessler.co/products/k-alloy-7" },
+        { id: "journal", original: 47316, distilled: 7602, saved: 39714, pct: "84% less", url: "kessler.co/journal" }
+      ];
+
+      const TOTAL_CARDS = CARDS_DATA.length;
+
+      // DOM Elements
+      const beltEl = document.getElementById("belt");
+      const canvas = document.getElementById("fx-canvas");
+      const ctx = canvas.getContext("2d");
+      const badgeNum = document.getElementById("badge-num");
+      const badgePct = document.getElementById("badge-pct");
+
+      const cardEls = [];
+      const codeEls = [];
+      for (let i = 0; i < TOTAL_CARDS; i++) {
+        cardEls.push(document.getElementById("card-" + i));
+        codeEls.push(document.getElementById("code-" + i));
+      }
+
+      // Geometry & State
+      let cw = 0;
+      let ch = 0;
+      let gap = 0;
+      let span = 0;
+      let period = 0;
+      let Lx = window.innerWidth / 2;
+      let dpr = 1;
+      let beltWidth = 0;
+      let beltHeight = 0;
+
+      // Motion State
+      let off = 0;
+      let vel = 0;
+      let hover = 0;
+      let isHovered = false;
+      let isDragging = false;
+      let lastX = 0;
+      let lastTime = 0;
+
+      // Badge Counter State
+      let currentTokens = 48193;
+      let targetTokens = 48193;
+      let lastActiveIndex = -1;
+
+      // Prefers reduced motion
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // Fast deterministic integer hash function for dithering
+      function hash(x, y, seed) {
+        let h = (x * 374761393 + y * 668265263 + seed * 962590211) ^ 0x5bf03635;
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+      }
+
+      // Mathematical modulo for wrapping
+      function mod(n, m) {
+        return ((n % m) + m) % m;
+      }
+
+      function clamp(val, min, max) {
+        return Math.min(Math.max(val, min), max);
+      }
+
+      // Measurement & Resize
+      function updateGeometry() {
+        const beltRect = beltEl.getBoundingClientRect();
+        beltWidth = beltRect.width;
+        beltHeight = beltRect.height;
+        Lx = window.innerWidth / 2;
+
+        if (cardEls[0]) {
+          const rect = cardEls[0].getBoundingClientRect();
+          cw = rect.width;
+          ch = rect.height;
+        } else {
+          cw = window.innerWidth * 0.46;
+          ch = window.innerHeight * 0.52;
+        }
+
+        // Gap calculation from CSS root
+        const rootStyles = getComputedStyle(document.documentElement);
+        const gapVal = rootStyles.getPropertyValue("--gap").trim();
+        if (gapVal.endsWith("vw")) {
+          gap = (parseFloat(gapVal) / 100) * window.innerWidth;
+        } else if (gapVal.endsWith("px")) {
+          gap = parseFloat(gapVal);
+        } else {
+          gap = window.innerWidth * 0.0475;
+        }
+
+        span = cw + gap;
+        period = span * TOTAL_CARDS;
+
+        // Resize Canvas with DPR capped at 2
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = beltWidth * dpr;
+        canvas.height = beltHeight * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+      }
+
+      // Initialize initial offset: W/2 - 0.62 * cw
+      updateGeometry();
+      off = window.innerWidth / 2 - 0.62 * cw;
+      vel = prefersReducedMotion ? 0 : -0.075 * window.innerWidth;
+
+      window.addEventListener("resize", function () {
+        updateGeometry();
+      });
+
+      // Pointer & Drag Interactions
+      beltEl.addEventListener("pointerenter", function () {
+        isHovered = true;
+      });
+
+      beltEl.addEventListener("pointerleave", function () {
+        isHovered = false;
+      });
+
+      beltEl.addEventListener("pointerdown", function (e) {
+        beltEl.setPointerCapture(e.pointerId);
+        isDragging = true;
+        lastX = e.clientX;
+        lastTime = performance.now();
+        beltEl.classList.add("grabbing");
+      });
+
+      beltEl.addEventListener("pointermove", function (e) {
+        if (!isDragging) return;
+        const now = performance.now();
+        const dtMs = Math.max(8, now - lastTime);
+        const dx = e.clientX - lastX;
+
+        off += dx;
+        vel = (dx / dtMs) * 1000 * 0.8 + vel * 0.2;
+
+        lastX = e.clientX;
+        lastTime = now;
+      });
+
+      function onPointerEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        beltEl.classList.remove("grabbing");
+        try {
+          beltEl.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+      }
+
+      beltEl.addEventListener("pointerup", onPointerEnd);
+      beltEl.addEventListener("pointercancel", onPointerEnd);
+
+      // Horizontal Wheel scrubbing
+      beltEl.addEventListener("wheel", function (e) {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          e.preventDefault();
+          vel += -e.deltaX * 6;
+        }
+      }, { passive: false });
+
+      // Sparks Emitter for extra atmospheric realism
+      const sparks = [];
+      function updateSparks(dt) {
+        // Spawn sparks near scanner line if a card is crossing
+        if (Math.random() < 0.6) {
+          sparks.push({
+            x: Lx + (Math.random() - 0.2) * 6,
+            y: 70 + Math.random() * ch,
+            vx: 8 + Math.random() * 28,
+            vy: (Math.random() - 0.5) * 20 - 15,
+            size: 1 + Math.random() * 2,
+            life: 1.0,
+            decay: 1.2 + Math.random() * 1.6
+          });
+        }
+
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const s = sparks[i];
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.life -= s.decay * dt;
+          if (s.life <= 0) {
+            sparks.splice(i, 1);
+          } else {
+            ctx.fillStyle = "rgba(255, 122, 60, " + (s.life * 0.85).toFixed(2) + ")";
+            ctx.fillRect(s.x, s.y, s.size, s.size);
+          }
+        }
+      }
+
+      // FX Dissolve Render function
+      function drawFx(activeCards) {
+        ctx.clearRect(0, 0, beltWidth, beltHeight);
+
+        for (let idx = 0; idx < activeCards.length; idx++) {
+          const item = activeCards[idx];
+          const x = item.x;
+          const cut = item.cut;
+          const i = item.index;
+
+          if (cut <= 0 || x + cw <= Lx) continue;
+
+          const cardY = 70; // cards sit at top: 70px inside .belt
+
+          // 1. Haze
+          const hazeWidth = Math.min(150, x + cw - Lx);
+          if (hazeWidth > 0) {
+            const grad = ctx.createLinearGradient(Lx, 0, Lx + 150, 0);
+            grad.addColorStop(0, "rgba(255, 96, 40, 0.42)");
+            grad.addColorStop(1, "rgba(255, 96, 40, 0)");
+            ctx.fillStyle = grad;
+            ctx.fillRect(Lx, cardY, hazeWidth, ch);
+          }
+
+          // 2. Dithered particles fixed to the card surface
+          // 3px grid in card-local coordinates
+          const R = 0.3 * cw;
+          const startGx = Math.max(0, Math.floor(cut / 3));
+          const endGx = Math.min(Math.floor(cw / 3), Math.floor((cut + R) / 3));
+          const rows = Math.floor(ch / 3);
+
+          ctx.fillStyle = "#FF5A1F";
+
+          for (let gx = startGx; gx <= endGx; gx++) {
+            const sx = x + gx * 3;
+            const d = sx - Lx;
+            if (d < 0) continue;
+
+            const p = Math.pow(Math.max(0, 1 - d / R), 1.7);
+            if (p <= 0.001) continue;
+
+            for (let row = -5; row < rows + 5; row++) {
+              const isInside = (row >= 0 && row < rows);
+              const thresh = p * (isInside ? 0.92 : 0.35);
+
+              if (hash(gx, row, i) < thresh) {
+                ctx.fillRect(sx, cardY + row * 3, 2.5, 2.5);
+              }
+            }
+          }
+        }
+      }
+
+      // Main Animation Loop
+      let prevTimestamp = performance.now();
+
+      function tick(now) {
+        const dt = Math.min(0.1, (now - prevTimestamp) / 1000);
+        prevTimestamp = now;
+
+        // Auto Speed & Hover easing
+        const autoSpeed = prefersReducedMotion ? 0 : -0.075 * window.innerWidth;
+        const targetHover = isHovered ? 1 : 0;
+        hover += (targetHover - hover) * Math.min(1, 4 * dt);
+        const targetSpeed = autoSpeed * (1 - 0.65 * hover);
+
+        // Velocity & Offset Integration
+        if (!isDragging) {
+          vel += (targetSpeed - vel) * (1 - Math.exp(-2.2 * dt));
+          off += vel * dt;
+        }
+
+        // Process Card Positions & Clips
+        const activeCards = [];
+        let crossingCard = null;
+        let crossingCardIndex = -1;
+        let crossingCut = 0;
+
+        for (let i = 0; i < TOTAL_CARDS; i++) {
+          const x = mod(off + i * span + span, period) - span;
+          const cut = clamp(Lx - x, 0, cw);
+
+          const card = cardEls[i];
+          const code = codeEls[i];
+
+          // Apply Card Transforms
+          card.style.transform = "translate3d(" + x.toFixed(2) + "px, 0, 0)";
+
+          if (cut > 0) {
+            const maskCut = cut + 26;
+            card.style.clipPath = "inset(0 0 0 " + cut.toFixed(2) + "px round 0 1.6vw 1.6vw 0)";
+            card.style.webkitClipPath = "inset(0 0 0 " + cut.toFixed(2) + "px round 0 1.6vw 1.6vw 0)";
+            card.style.maskImage = "linear-gradient(90deg, transparent " + cut.toFixed(2) + "px, #000 " + maskCut.toFixed(2) + "px)";
+            card.style.webkitMaskImage = "linear-gradient(90deg, transparent " + cut.toFixed(2) + "px, #000 " + maskCut.toFixed(2) + "px)";
+          } else {
+            card.style.clipPath = "none";
+            card.style.webkitClipPath = "none";
+            card.style.maskImage = "none";
+            card.style.webkitMaskImage = "none";
+          }
+
+          // Apply Code Transforms
+          code.style.transform = "translate3d(" + x.toFixed(2) + "px, 0, 0)";
+          code.style.clipPath = "inset(0 " + (cw - cut).toFixed(2) + "px 0 0)";
+          code.style.webkitClipPath = "inset(0 " + (cw - cut).toFixed(2) + "px 0 0)";
+          code.style.visibility = cut > 0 ? "visible" : "hidden";
+
+          // Track crossing card for counter
+          if (cut > 0 && cut < cw) {
+            crossingCard = CARDS_DATA[i];
+            crossingCardIndex = i;
+            crossingCut = cut;
+          }
+
+          if (cut > 0 && x + cw > Lx) {
+            activeCards.push({ index: i, x: x, cut: cut });
+          }
+        }
+
+        // Dissolve canvas rendering
+        drawFx(activeCards);
+        if (activeCards.length > 0) {
+          updateSparks(dt);
+        }
+
+        // Update Counter
+        if (crossingCard) {
+          const progress = crossingCut / cw;
+          targetTokens = Math.round((crossingCard.original - crossingCard.distilled) * progress);
+
+          if (crossingCardIndex !== lastActiveIndex) {
+            lastActiveIndex = crossingCardIndex;
+            currentTokens = targetTokens; // Snap on change
+            badgePct.textContent = Math.round((crossingCard.saved / crossingCard.original) * 100) + "% less";
+          } else {
+            currentTokens += (targetTokens - currentTokens) * Math.min(1, dt * 14);
+          }
+
+          badgeNum.textContent = "\u2212" + Math.round(currentTokens).toLocaleString("en-US");
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    })();
+  </script>
 </body>
 </html>
