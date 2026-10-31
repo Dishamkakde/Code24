@@ -84,7 +84,7 @@ export const MarenVideoIntro: React.FC = () => {
       }`}
       role="dialog"
       aria-modal="true"
-      aria-label="Welcome to MAREN"
+      aria-label="Welcome"
     >
       {/* Background Video with Voice */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-[1]">
@@ -126,12 +126,8 @@ export const MarenVideoIntro: React.FC = () => {
           </button>
         </div>
 
-        {/* Center MAREN Logo */}
-        <div className="flex-1 flex items-center justify-center text-center">
-          <h1 className="font-serif italic font-normal text-white uppercase tracking-[0.18em] text-5xl sm:text-7xl lg:text-8xl leading-none drop-shadow-2xl">
-            MAREN
-          </h1>
-        </div>
+        {/* Center area without MAREN text */}
+        <div className="flex-1 flex items-center justify-center text-center"></div>
 
         {/* Bottom ENTER Button */}
         <button
