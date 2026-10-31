@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MarenVideoIntro } from './components/MarenVideoIntro';
 import { Navbar } from './components/Navbar';
 import { HeroBanner } from './components/HeroBanner';
 import { ProjectImporter } from './components/ProjectImporter';
@@ -129,7 +130,10 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F5EFE6] text-[#302321] flex flex-col font-sans">
+      {/* Cinematic Fullscreen Video Intro */}
+      <MarenVideoIntro />
+
       {/* Toast notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-2xl animate-in slide-in-from-bottom duration-200 border border-slate-700">

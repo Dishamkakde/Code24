@@ -4,33 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PatchProof</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e1116;--card:#161b22;--line:#2a313c;--tx:#e6edf3;--mut:#8b949e;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#58a6ff}
+:root{--bg:#F5EFE6;--bg-sec:#EDE3D5;--card:#FBF8F3;--line:#E1D3C5;--tx:#302321;--mut:#75645D;--ok:#48765C;--bad:#A13D42;--warn:#B17A37;--acc:#641E2E;--acc-hover:#45121F}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
-header{padding:28px 24px 8px;max-width:1000px;margin:auto}
-h1{margin:0;font-size:28px} h1 span{color:var(--acc)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 'Manrope',-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}
+header{padding:28px 24px 12px;max-width:1000px;margin:auto}
+h1{margin:0;font-size:28px;font-family:'Playfair Display',Georgia,serif;color:var(--tx)} h1 span{color:var(--acc)}
 p.sub{color:var(--mut);margin:4px 0 16px}
 main{max-width:1000px;margin:auto;padding:0 24px 60px}
-button{background:var(--acc);color:#04111f;border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:15px}
+button{background:var(--acc);color:var(--bg);border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:15px;transition:background 150ms ease}
+button:hover:not(:disabled){background:var(--acc-hover)}
 button:disabled{opacity:.5;cursor:wait}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:20px 0}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
-.stat b{display:block;font-size:24px}.stat span{color:var(--mut);font-size:13px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}
+.stat b{display:block;font-size:24px;color:var(--acc)}.stat span{color:var(--mut);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin:16px 0;box-shadow:0 1px 3px rgba(48,35,33,0.05)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .badge{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;border:1px solid}
-.Critical{color:var(--bad);border-color:var(--bad)}.High{color:#ff8a4c;border-color:#ff8a4c}
-.Medium{color:var(--warn);border-color:var(--warn)}.Info{color:var(--mut);border-color:var(--mut)}
-.ok{color:var(--ok);border-color:var(--ok)}.bad{color:var(--bad);border-color:var(--bad)}
-h3{margin:8px 0 4px}h4{margin:14px 0 4px;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-pre{background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:6px 0}
-.add{color:var(--ok)}.del{color:var(--bad)}.hunk{color:var(--acc)}
-table{width:100%;border-collapse:collapse;font-size:14px}
-td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.Critical{color:var(--bad);background:#FBEBED;border-color:#F3C3C6}.High{color:var(--warn);background:#FAF3E8;border-color:#EED7B8}
+.Medium{color:var(--warn);background:#FAF3E8;border-color:#EED7B8}.Info{color:var(--mut);background:var(--bg-sec);border-color:var(--line)}
+.ok{color:var(--ok);background:#EBF3EE;border-color:#BCD5C6}.bad{color:var(--bad);background:#FBEBED;border-color:#F3C3C6}
+h3{margin:8px 0 4px;font-family:'Playfair Display',Georgia,serif;font-size:18px}h4{margin:14px 0 4px;color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+pre{background:#221719;color:#F5EFE6;border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:6px 0}
+.add{color:#A7D3B5}.del{color:#F3B3B6}.hunk{color:#DDAE77}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+th{background:var(--bg-sec);color:var(--acc);font-weight:700;padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
 .err{color:var(--bad)}
 .flow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.step{flex:1;min-width:150px;background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px}
+.step{flex:1;min-width:150px;background:#FAF5EE;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px}
 </style>
 </head>
 <body>
