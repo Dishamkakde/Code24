@@ -1422,6 +1422,36 @@
       50% { transform: translateY(5px); }
     }
 
+    .maren-intro-sound-btn {
+      pointer-events: auto;
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #FFFFFF;
+      border-radius: var(--radius-pill, 9999px);
+      padding: 8px 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      transition: all 200ms ease;
+      z-index: 10;
+    }
+    .maren-intro-sound-btn:hover {
+      background: rgba(0, 0, 0, 0.7);
+      border-color: rgba(255, 255, 255, 0.65);
+      transform: scale(1.03);
+    }
+
     body.maren-intro-active {
       overflow: hidden !important;
       height: 100vh !important;
@@ -1439,22 +1469,35 @@
 </head>
 <body class="maren-intro-active">
 
-  <!-- CINEMATIC VIDEO INTRO SCREEN (FULLSCREEN OVERLAY) -->
+  <!-- CINEMATIC VIDEO INTRO SCREEN (FULLSCREEN OVERLAY WITH VOICE) -->
   <aside id="marenVideoIntro" class="maren-intro-overlay" role="dialog" aria-modal="true" aria-label="Welcome to MAREN">
     <div class="maren-intro-video-wrap">
       <video 
         id="marenIntroVideo"
         class="maren-intro-video"
         autoplay 
-        muted 
         loop 
         playsinline 
         preload="auto">
-        <source src="https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/0b9dbcc0-b9fc-4c2c-9418-458e4e829c59.mp4" type="video/mp4">
+        <source src="https://www.image2url.com/r2/default/videos/1793430693365-87bf0334-8aec-4a3b-b1da-56ee64bbd774.mp4" type="video/mp4">
       </video>
     </div>
     
     <div class="maren-intro-content">
+      <!-- Top Sound Control -->
+      <button id="marenSoundToggleBtn" class="maren-intro-sound-btn" aria-label="Toggle voice and sound" title="Toggle sound">
+        <svg id="marenSoundIconOn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <svg id="marenSoundIconOff" style="display:none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+        <span id="marenSoundLabel">VOICE ON</span>
+      </button>
+
       <div style="height:24px;"></div>
       <div class="maren-intro-center">
         <h1 class="maren-intro-logo">MAREN</h1>
@@ -2844,33 +2887,81 @@
     }
 
     /* ==========================================================================
-       CINEMATIC VIDEO INTRO DISMISSAL INTERACTION
+       CINEMATIC VIDEO INTRO DISMISSAL & VOICE INTERACTION
        ========================================================================== */
     (function initMarenIntro() {
       const introOverlay = document.getElementById("marenVideoIntro");
       const introVideo = document.getElementById("marenIntroVideo");
       const enterBtn = document.getElementById("marenIntroEnterBtn");
+      const soundBtn = document.getElementById("marenSoundToggleBtn");
+      const soundIconOn = document.getElementById("marenSoundIconOn");
+      const soundIconOff = document.getElementById("marenSoundIconOff");
+      const soundLabel = document.getElementById("marenSoundLabel");
       if (!introOverlay) return;
 
       let isDismissed = false;
 
-      // Autoplay fallback: explicitly request playback
+      function updateSoundUI(isMuted) {
+        if (!soundBtn) return;
+        if (isMuted) {
+          if (soundIconOn) soundIconOn.style.display = "none";
+          if (soundIconOff) soundIconOff.style.display = "inline-block";
+          if (soundLabel) soundLabel.textContent = "UNMUTE VOICE";
+        } else {
+          if (soundIconOn) soundIconOn.style.display = "inline-block";
+          if (soundIconOff) soundIconOff.style.display = "none";
+          if (soundLabel) soundLabel.textContent = "VOICE ON";
+        }
+      }
+
+      // Voice Audio Setup: attempt unmuted playback first
       if (introVideo) {
+        introVideo.muted = false;
         const playPromise = introVideo.play();
         if (playPromise !== undefined) {
-          playPromise.catch(function() {
-            // Autoplay prevented by browser, video remains ready
+          playPromise.then(function() {
+            // Unmuted playback succeeded
+            updateSoundUI(false);
+          }).catch(function() {
+            // Browser autoplay policy blocked unmuted sound; play muted and unmute on first gesture
+            introVideo.muted = true;
+            updateSoundUI(true);
+            introVideo.play().catch(function() {});
+
+            function unmuteOnGesture() {
+              if (introVideo && !isDismissed) {
+                introVideo.muted = false;
+                updateSoundUI(false);
+              }
+              window.removeEventListener("pointerdown", unmuteOnGesture);
+              window.removeEventListener("keydown", unmuteOnGesture);
+            }
+            window.addEventListener("pointerdown", unmuteOnGesture, { once: true });
+            window.addEventListener("keydown", unmuteOnGesture, { once: true });
           });
         }
       }
 
-      function dismissIntro(e) {
+      // Sound toggle button click
+      if (soundBtn && introVideo) {
+        soundBtn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          introVideo.muted = !introVideo.muted;
+          updateSoundUI(introVideo.muted);
+          if (!introVideo.muted && introVideo.paused) {
+            introVideo.play().catch(function() {});
+          }
+        });
+      }
+
+      function dismissIntro() {
         if (isDismissed) return;
         isDismissed = true;
 
         // Prevent repeated clicks during transition
         introOverlay.style.pointerEvents = "none";
         if (enterBtn) enterBtn.style.pointerEvents = "none";
+        if (soundBtn) soundBtn.style.pointerEvents = "none";
 
         // Trigger smooth 800ms fade-out
         introOverlay.classList.add("maren-intro-leaving");
