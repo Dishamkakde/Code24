@@ -41,6 +41,7 @@ htmlcov/
 
 # Logs & Environment
 *.log
+*.zip
 .env
 .env.local
 .DS_Store

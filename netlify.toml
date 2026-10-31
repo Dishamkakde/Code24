@@ -1,0 +1,28 @@
+# Netlify Configuration for DAMage CTRL
+
+[build]
+  # Directory containing the static site assets (includes index.html with video intro)
+  publish = "static"
+  functions = "netlify/functions"
+
+# Route API endpoints to serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Single-Page App redirect: route all other requests to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Recommended HTTP security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
