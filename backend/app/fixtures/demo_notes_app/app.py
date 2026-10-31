@@ -36,3 +36,14 @@ def list_notes(db, user_id):
 def read_attachment(name):
     with open(os.path.join(UPLOADS, name), "r") as f:
         return f.read()
+
+
+def upload_attachment(name, content):
+    path = os.path.realpath(os.path.join(UPLOADS, os.path.basename(name)))
+    root = os.path.realpath(UPLOADS)
+    if os.path.commonpath([path, root]) != root:
+        raise PermissionError("path escapes uploads directory")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return True
+

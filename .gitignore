@@ -34,7 +34,10 @@ backend/storage/projects/*
 backend/storage/temp/*
 !backend/storage/temp/.gitkeep
 *.db
-*.db-journal
+# Workspace temporary runs
+workspace/
+.coverage
+htmlcov/
 
 # Logs & Environment
 *.log

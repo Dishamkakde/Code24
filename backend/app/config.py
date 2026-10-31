@@ -9,7 +9,7 @@ FIXTURES_DIR = BASE_DIR / "app" / "fixtures"
 DB_PATH = Path(os.environ.get("DB_PATH", str(STORAGE_DIR / "damage_control.db")))
 
 # Security & limits
-MAX_ZIP_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB max ZIP size
+MAX_ZIP_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB max ZIP size
 MAX_FILE_COUNT = 2500                  # Max files in uploaded archive
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB per single file
 

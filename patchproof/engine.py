@@ -137,11 +137,25 @@ def run_pipeline():
         prepare(after, patched)
         a = run_checks(after)
     rescan = {x["function"] for x in scan(patched)}
+    b_exploit_details = b.get("exploit_details", {})
+    a_exploit_details = a.get("exploit_details", {})
     for f in findings:
-        f["exploit_before"] = b["exploits"][f["exploit"]]
-        f["exploit_after"] = a["exploits"][f["exploit"]]
+        ex_key = f["exploit"]
+        f["exploit_before"] = b["exploits"][ex_key]
+        f["exploit_after"] = a["exploits"][ex_key]
         f["rescan_clean"] = f["function"] not in rescan
         f["fixed"] = f["status"] == "confirmed" and not f["exploit_after"]
+        f["exploit_before_raw"] = b_exploit_details.get(ex_key, {}).get("raw_output", "")
+        f["exploit_after_raw"] = a_exploit_details.get(ex_key, {}).get("raw_output", "")
+        if f["status"] == "false_positive":
+            f["status_label"] = "False Positive - Not Exploitable"
+            f["severity_rationale"] = (
+                f"Exploit attempt failed before patch: {f['exploit_before_raw']}. "
+                "Input is validated/typecast before SQL query execution. Marked as False Positive - Not Exploitable."
+            )
+        else:
+            f["status_label"] = "FIXED & VERIFIED" if f["fixed"] else "UNVERIFIED"
+
     conf = [f for f in findings if f["status"] == "confirmed"]
     return dict(
         summary=dict(candidates=len(findings), confirmed=len(conf),

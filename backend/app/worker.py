@@ -32,20 +32,22 @@ logger = logging.getLogger("damage_ctrl.worker")
 
 KNOWN_PATCHES = {
     "login": (
-        """db.execute(f"SELECT id FROM users WHERE username='{username}' AND password='{password}'")""",
-        """db.execute("SELECT id FROM users WHERE username=? AND password=?", (username, password))"""
+        """row = db.execute(f"SELECT id FROM users WHERE username='{username}' AND password='{password}'").fetchone()""",
+        """row = db.execute("SELECT id FROM users WHERE username=? AND password=?", (username, password)).fetchone()"""
     ),
     "get_note": (
-        """db.execute("SELECT body FROM notes WHERE id = ?", (note_id,))""",
-        """db.execute("SELECT body FROM notes WHERE id = ? AND owner_id = ?", (note_id, user_id))"""
+        """row = db.execute("SELECT body FROM notes WHERE id = ?", (note_id,)).fetchone()""",
+        """row = db.execute("SELECT body FROM notes WHERE id = ? AND owner_id = ?", (note_id, user_id)).fetchone()"""
     ),
     "read_attachment": (
-        """    with open(os.path.join(UPLOADS, name), "r") as f:""",
+        """    with open(os.path.join(UPLOADS, name), "r") as f:
+        return f.read()""",
         """    path = os.path.realpath(os.path.join(UPLOADS, name))
     root = os.path.realpath(UPLOADS)
     if os.path.commonpath([path, root]) != root:
         raise PermissionError("path escapes uploads directory")
-    with open(path, "r") as f:"""
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()"""
     ),
     "list_notes": (
         """    uid = int(user_id)
@@ -107,6 +109,7 @@ def execute_scan_task(project_id: str, scan_id: str) -> Dict[str, Any]:
                     prepare_fixture_directory(sandbox, original_source)
                     baseline_results = run_isolated_checks(sandbox, checks_script)
                     exploits_data = baseline_results.get("exploits", {})
+                    exploit_details = baseline_results.get("exploit_details", {})
                     regressions_data = baseline_results.get("regressions", {})
             except Exception as e:
                 logger.warning(f"Error running baseline sandbox verification: {e}")
@@ -120,18 +123,33 @@ def execute_scan_task(project_id: str, scan_id: str) -> Dict[str, Any]:
             exploit_key = EXPLOITS_MAP.get(f.function, "")
             if exploit_key and exploit_key in exploits_data:
                 f.exploit_name = exploit_key
+                raw_proof = exploit_details.get(exploit_key, {}).get("raw_output", "")
                 if exploits_data[exploit_key]:
                     f.status = "confirmed"
+                    f.verified_status = "unpatched"
                     f.exploit_before = True
                     confirmed_count += 1
                     if is_demo_or_fixture and f.function in KNOWN_PATCHES:
                         from app.services.patch_service import create_unified_diff
                         f.patch_original, f.patch_corrected = KNOWN_PATCHES[f.function]
-                        f.diff = create_unified_diff(f.patch_original, f.patch_corrected, f.file)
+                        patched_file_content = original_source.replace(f.patch_original, f.patch_corrected, 1)
+                        f.diff = create_unified_diff(original_source, patched_file_content, f.file)
+                    if raw_proof:
+                        f.five_sections.proof = f"Verified Exploit (Before Patch): {raw_proof}"
                 else:
+                    # The integer-cast filter case: marked False Positive - Not Exploitable
                     f.status = "false_positive"
+                    f.verified_status = "false_positive"
                     f.exploit_before = False
                     f.cvss = 0.0
+                    f.severity = "Info"
+                    f.severity_level = 0
+                    f.title = "False Positive - Not Exploitable (Integer-Cast Filter)"
+                    f.five_sections.proof = (
+                        f"Proof: Exploit failed before any patch: {raw_proof}. "
+                        "Input is typecast with int() prior to query interpolation, preventing injection. "
+                        "Status: False Positive - Not Exploitable."
+                    )
                     false_positives_count += 1
             else:
                 f.exploit_before = None

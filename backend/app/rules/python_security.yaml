@@ -51,6 +51,25 @@ rules:
         - "https://cwe.mitre.org/data/definitions/22.html"
       remediation: "Validate paths with os.path.realpath and os.path.commonpath to ensure they remain inside the intended directory."
 
+  - id: python-idor-missing-owner-check
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute("SELECT ... FROM notes WHERE id = ?", ...)
+          - pattern: $DB.execute(f"SELECT ... FROM notes WHERE id = ...")
+      - pattern-not: $DB.execute("SELECT ... FROM notes WHERE id = ? AND owner_id = ?", ...)
+      - pattern-not: $DB.execute("SELECT ... FROM notes WHERE owner_id = ? AND id = ?", ...)
+    message: "Potential Insecure Direct Object Reference (IDOR): querying notes by ID without checking owner_id"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      confidence: HIGH
+      vulnerability_class: "Broken Access Control"
+      references:
+        - "https://cwe.mitre.org/data/definitions/639.html"
+        - "https://owasp.org/Top10/A01_2021-Broken_Access_Control/"
+      remediation: "Add an ownership predicate (owner_id = current_user) to ensure users can only access their own records."
+
   - id: python-insecure-deserialization
     patterns:
       - pattern-either:

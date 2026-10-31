@@ -207,7 +207,7 @@ def read_source_snippet(file_path: Path, start_line: int, end_line: int, padding
 def run_bandit_scanner(project_dir: Path) -> Tuple[ScannerExecutionRecord, List[Finding]]:
     t0 = time.time()
     version = get_installed_version("bandit") or "1.9.4"
-    cmd = [PYTHON_EXE, "-m", "bandit", "-r", str(project_dir), "-f", "json", "--exit-zero"]
+    cmd = [PYTHON_EXE, "-m", "bandit", "-r", str(project_dir), "-f", "json", "--exit-zero", "-x", "checks.py,*test*"]
 
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -402,9 +402,11 @@ def run_semgrep_scanner(project_dir: Path, languages: List[str]) -> Tuple[Scanne
     # Map project files to rules
     targets: List[Tuple[Path, Path, str]] = []  # (file_path, rules_file, lang_code)
     for root, _, files in os.walk(project_dir):
-        if "node_modules" in root or ".git" in root or "__pycache__" in root:
+        if "node_modules" in root or ".git" in root or "__pycache__" in root or "tests" in root or "test" in root:
             continue
         for f in files:
+            if f == "checks.py" or f.startswith("test_"):
+                continue
             fp = Path(root) / f
             ext = fp.suffix.lower()
             if ext == ".py" and PYTHON_RULES_FILE.exists():
@@ -496,6 +498,8 @@ def run_semgrep_scanner(project_dir: Path, languages: List[str]) -> Tuple[Scanne
 
         if "sqli" in check_id.lower():
             rule_key = "SQLI"
+        elif "idor" in check_id.lower():
+            rule_key = "IDOR"
         elif "command" in check_id.lower() or "exec" in check_id.lower():
             rule_key = "CMD_INJECTION"
         elif "path" in check_id.lower() or "traversal" in check_id.lower():
@@ -580,6 +584,104 @@ def run_semgrep_scanner(project_dir: Path, languages: List[str]) -> Tuple[Scanne
         findings_count=len(findings)
     )
     return record, findings
+
+# -------------------------------------------------------------
+# 2B. AST PYTHON SECURITY SCANNER (Deterministic AST Rules)
+# -------------------------------------------------------------
+def run_ast_python_scanner(project_dir: Path) -> Tuple[ScannerExecutionRecord, List[Finding]]:
+    t0 = time.time()
+    findings: List[Finding] = []
+    raw_outputs: List[str] = []
+    from app.services.scanner_service import scan_python_code
+
+    py_files = list(project_dir.glob("**/*.py"))
+    for py_f in py_files:
+        if "node_modules" in str(py_f) or ".git" in str(py_f) or "__pycache__" in str(py_f) or "tests" in str(py_f) or "test" in str(py_f) or py_f.name == "checks.py" or py_f.name.startswith("test_"):
+            continue
+        try:
+            rel = str(py_f.resolve().relative_to(project_dir.resolve())).replace("\\", "/")
+        except Exception:
+            rel = py_f.name
+
+        code = py_f.read_text(encoding="utf-8", errors="ignore")
+        candidates = scan_python_code(code, rel)
+        for c in candidates:
+            rule_key = c["rule"]
+            rule_meta = RULE_METADATA.get(rule_key, RULE_METADATA["SQLI"])
+            patch_orig = rule_meta.get("patch_original", c["snippet"])
+            patch_corr = rule_meta.get("patch_corrected", c["snippet"])
+            diff = create_unified_diff(patch_orig, patch_corr, rel)
+
+            five_sec = dict(rule_meta["five_sections"])
+            five_sec["where"] = f"In {rel} at line {c['line']} inside {c['function']}()."
+
+            classif_dict = classify_finding(
+                scanner_name="ast_analyzer",
+                scanner_rule_id=f"ast-{rule_key.lower()}",
+                raw_cwe=rule_meta["cwe"],
+                scanner_severity=rule_meta["severity"],
+                scanner_confidence="HIGH",
+                scanner_message=rule_meta["title"],
+                file_path=rel,
+                cvss_score=rule_meta["cvss"]
+            )
+
+            f = Finding(
+                id=f"PP-AST-{len(findings) + 1:02d}",
+                rule=f"ast-{rule_key.lower()}",
+                cwe=rule_meta["cwe"],
+                title=rule_meta["title"],
+                technical_title=rule_meta["technical_title"],
+                severity=rule_meta["severity"],
+                severity_level=rule_meta["severity_level"],
+                status="suspected_pattern",
+                cvss=rule_meta["cvss"],
+                file=rel,
+                function=c["function"],
+                line=c["line"],
+                end_line=c["end_line"],
+                snippet=c["snippet"],
+                eli12=rule_meta["eli12"],
+                five_sections=FiveSections(**five_sec),
+                diff=diff,
+                patch_original=patch_orig,
+                patch_corrected=patch_corr,
+                patch_rationale=rule_meta["patch_rationale"],
+                patch_plain_english=rule_meta["patch_plain_english"],
+                exploit_name="",
+                exploit_before=None,
+                exploit_after=None,
+                rescan_clean=None,
+                fixed=False,
+                verified_status="unpatched",
+                scanner_name="ast_analyzer",
+                scanner_version="1.0.0",
+                rule_identifier=f"ast-{rule_key.lower()}",
+                confidence="HIGH",
+                cwe_identifiers=[rule_meta["cwe"]],
+                relevant_references=["https://cwe.mitre.org/"],
+                source_evidence=c["snippet"],
+                why_matched=rule_meta["patch_rationale"],
+                remediation_guidance=rule_meta["patch_plain_english"],
+                classification=EvidenceBasedClassification(**classif_dict)
+            )
+            findings.append(f)
+        raw_outputs.append(f"Scanned {rel}: {len(candidates)} candidates")
+
+    dur = round(time.time() - t0, 3)
+    record = ScannerExecutionRecord(
+        scanner_name="ast_analyzer",
+        scanner_version="1.0.0",
+        status="success",
+        duration_seconds=dur,
+        command=["python_ast_analyzer"],
+        raw_stdout="\n".join(raw_outputs),
+        raw_stderr=None,
+        error_message=None,
+        findings_count=len(findings)
+    )
+    return record, findings
+
 
 # -------------------------------------------------------------
 # 3. PIP-AUDIT RUNNER
@@ -1005,6 +1107,12 @@ def run_vulnerability_engine(project_dir: Path) -> Tuple[ProjectEnvironment, Lis
         reports.append(s_rec)
         raw_findings.extend(s_findings)
 
+    # 2B. Run AST Python Security Scanner if Python source is present
+    if "Python" in env.languages:
+        ast_rec, ast_findings = run_ast_python_scanner(project_dir)
+        reports.append(ast_rec)
+        raw_findings.extend(ast_findings)
+
     # 3. Run pip-audit if Python dependencies manifest is detected
     if "pip-audit" in env.applicable_scanners:
         p_rec, p_findings = run_pip_audit_scanner(project_dir)
@@ -1027,6 +1135,8 @@ def run_vulnerability_engine(project_dir: Path) -> Tuple[ProjectEnvironment, Lis
             # Merge references and secondary scanner name into existing finding
             for existing in deduped:
                 if (existing.file, existing.line, existing.cwe) == loc_key:
+                    if existing.function in ("app_logic", "unknown", "anonymous") and f.function not in ("app_logic", "unknown", "anonymous"):
+                        existing.function = f.function
                     if f.scanner_name not in existing.technical_title:
                         existing.technical_title += f" + {f.scanner_name}"
                     if f.relevant_references:

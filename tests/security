@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Security exploit test suite for DAMage CTRL.
+Executes real exploit payloads against:
+  1. The ORIGINAL demo app (where exploits MUST SUCCEED to confirm vulnerabilities)
+  2. The PATCHED demo app (where the same exploits MUST BE BLOCKED)
+Planted exploits:
+  a. SQLi login bypass with ' OR '1'='1
+  b. Broken access control (IDOR): one user reading another user's note
+  c. Path traversal: a ../ file download
+"""
+import os
+import sys
+import shutil
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+
+def _get_client_for_dir(app_dir):
+    app_path = str(Path(app_dir).resolve())
+    if app_path in sys.path:
+        sys.path.remove(app_path)
+    sys.path.insert(0, app_path)
+    if "app" in sys.modules:
+        del sys.modules["app"]
+    import app
+    return app.app.test_client()
+
+
+def run_security_suite(original_dir=None, patched_dir=None):
+    import engine
+
+    if original_dir is None:
+        original_dir = str(ROOT / "demo_app")
+    if patched_dir is None:
+        patched_dir = str(ROOT / "workspace" / "security_demo_patched")
+        os.makedirs(patched_dir, exist_ok=True)
+        engine.fix_project(original_dir, patched_dir)
+
+    orig_path = Path(original_dir).resolve()
+    patch_path = Path(patched_dir).resolve()
+
+    print("=" * 70)
+    print(f"[*] DAMage CTRL Security Verification Suite")
+    print(f"    Target Original: {orig_path}")
+    print(f"    Target Patched:  {patch_path}")
+    print("=" * 70)
+
+    # 1. Run exploits against ORIGINAL app (Must SUCCEED)
+    orig_client = _get_client_for_dir(orig_path)
+
+    # 1a. SQLi login bypass on original with ' OR '1'='1
+    sqli_orig = orig_client.post("/login", json={"username": "' OR '1'='1", "password": "' OR '1'='1"})
+    sqli_orig_success = (sqli_orig.status_code == 200 and sqli_orig.get_json().get("status") == "success")
+
+    # 1b. IDOR on original: Bob logs in, reads Alice's note 1
+    orig_client.post("/login", json={"username": "bob", "password": "password456"})
+    idor_orig = orig_client.get("/notes/1")
+    idor_orig_success = (idor_orig.status_code == 200 and "Alice Secret" in idor_orig.get_json().get("title", ""))
+
+    # 1c. Path traversal on original: ../server_secret.txt
+    pt_orig = orig_client.get("/download/../server_secret.txt")
+    pt_orig_success = (pt_orig.status_code == 200 and b"FLAG_DAMage_CTRL" in pt_orig.data)
+
+    print("\n[PHASE 1] Exploits against ORIGINAL Demo App (Vulnerability Confirmation):")
+    print(f"  * SQLi Login Bypass (' OR '1'='1):       {'[EXPLOITED - VULNERABLE]' if sqli_orig_success else '[FAILED]'}")
+    print(f"  * IDOR (Bob reading Alice's note):      {'[EXPLOITED - VULNERABLE]' if idor_orig_success else '[FAILED]'}")
+    print(f"  * Path Traversal (../server_secret.txt): {'[EXPLOITED - VULNERABLE]' if pt_orig_success else '[FAILED]'}")
+
+    assert sqli_orig_success, "Expected SQLi exploit to succeed on original app"
+    assert idor_orig_success, "Expected IDOR exploit to succeed on original app"
+    assert pt_orig_success, "Expected Path Traversal exploit to succeed on original app"
+
+    # 2. Run SAME exploits against PATCHED app (Must be BLOCKED)
+    patch_client = _get_client_for_dir(patch_path)
+
+    # 2a. SQLi login bypass on patched
+    sqli_patch = patch_client.post("/login", json={"username": "' OR '1'='1", "password": "' OR '1'='1"})
+    sqli_patch_blocked = (sqli_patch.status_code == 401)
+
+    # 2b. IDOR on patched: Bob logs in, tries to read Alice's note 1
+    patch_client.post("/login", json={"username": "bob", "password": "password456"})
+    idor_patch = patch_client.get("/notes/1")
+    idor_patch_blocked = (idor_patch.status_code == 404)
+
+    # 2c. Path traversal on patched: ../server_secret.txt
+    pt_patch = patch_client.get("/download/../server_secret.txt")
+    pt_patch_blocked = (pt_patch.status_code == 400)
+
+    print("\n[PHASE 2] Same Exploits against PATCHED Demo App (Proof of Fix):")
+    print(f"  * SQLi Login Bypass (' OR '1'='1):       {'[BLOCKED - SECURED]' if sqli_patch_blocked else '[STILL VULNERABLE]'}")
+    print(f"  * IDOR (Bob reading Alice's note):      {'[BLOCKED - SECURED]' if idor_patch_blocked else '[STILL VULNERABLE]'}")
+    print(f"  * Path Traversal (../server_secret.txt): {'[BLOCKED - SECURED]' if pt_patch_blocked else '[STILL VULNERABLE]'}")
+
+    assert sqli_patch_blocked, "Expected SQLi exploit to be blocked on patched app"
+    assert idor_patch_blocked, "Expected IDOR exploit to be blocked on patched app"
+    assert pt_patch_blocked, "Expected Path Traversal exploit to be blocked on patched app"
+
+    all_blocked = sqli_patch_blocked and idor_patch_blocked and pt_patch_blocked
+
+    print("\n" + "=" * 70)
+    print("[+] ALL EXPLOITS CONFIRMED ON ORIGINAL AND 100% BLOCKED ON PATCHED APP!")
+    print("=" * 70)
+
+    exploits = [
+        {
+            "id": "SQLI",
+            "name": "SQL Injection Login Bypass",
+            "payload": "username=\"' OR '1'='1\", password=\"' OR '1'='1\"",
+            "before_status": "EXPLOITED",
+            "before_detail": "Auth bypass succeeded: logged in without password (HTTP 200)",
+            "after_status": "BLOCKED",
+            "after_detail": "Auth bypass rejected: parameter binding enforced (HTTP 401)"
+        },
+        {
+            "id": "IDOR",
+            "name": "Insecure Direct Object Reference (Broken Access Control)",
+            "payload": "User 2 requesting note_id=1 (Alice's private note)",
+            "before_status": "EXPLOITED",
+            "before_detail": "Unauthorized access granted: read Alice's private note (HTTP 200)",
+            "after_status": "BLOCKED",
+            "after_detail": "Access denied: database query restricted by user_id (HTTP 404)"
+        },
+        {
+            "id": "PATH_TRAVERSAL",
+            "name": "Path Traversal in File Download",
+            "payload": "GET /download/../server_secret.txt",
+            "before_status": "EXPLOITED",
+            "before_detail": "Directory escaped: read server_secret.txt (HTTP 200)",
+            "after_status": "BLOCKED",
+            "after_detail": "Directory escape prevented: safe_path_join blocked request (HTTP 400)"
+        }
+    ]
+
+    return {
+        "all_confirmed_before": True,
+        "all_blocked_after": all_blocked,
+        "exploits": exploits
+    }
+
+
+if __name__ == "__main__":
+    res = run_security_suite()
+    sys.exit(0 if res["all_blocked_after"] else 1)

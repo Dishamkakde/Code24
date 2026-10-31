@@ -61,8 +61,16 @@ async def verify_patch_endpoint(project_id: str, finding_id: str):
     finding["exploit_before"] = ver_res["exploit_before"]
     finding["exploit_after"] = ver_res["exploit_after"]
     finding["rescan_clean"] = ver_res["rescan_clean"]
-    finding["fixed"] = ver_res["status"] == "fixed_verified"
-    finding["verified_status"] = "fixed_verified" if ver_res["status"] == "fixed_verified" else "unverified"
+    
+    if ver_res["status"] == "fixed_verified":
+        finding["fixed"] = True
+        finding["verified_status"] = "fixed_verified"
+    else:
+        finding["fixed"] = False
+        finding["verified_status"] = "failed"
+        # Auto-revert working copy file to original code on failure
+        if patched_file and patched_file.exists():
+            patched_file.write_text(original_code, encoding="utf-8")
 
     # Recalculate summary
     fixed_count = sum(1 for f in scan_res["findings"] if f.get("fixed", False))
